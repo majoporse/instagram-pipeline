@@ -15,14 +15,12 @@ def _settings(
     output_size: int = 600,
     border_size: int = 30,
     shadow: bool = False,
-    mat_size: int = 0,
 ) -> ImageSettings:
     return ImageSettings(
         output_size=output_size,
         border_size=border_size,
         border_color="#123456",
         shadow=shadow,
-        mat_size=mat_size,
     )
 
 
@@ -111,7 +109,7 @@ def test_compose_photo_scales_to_fit_inner_box(tmp_path: Path) -> None:
     assert abs((w / h) - (100 / 50)) < 0.05
 
 
-def test_compose_photo_renders_shadow_and_mat(tmp_path: Path) -> None:
+def test_compose_photo_renders_shadow(tmp_path: Path) -> None:
     source = tmp_path / "source.jpg"
     Image.new("RGB", (100, 50), (200, 100, 50)).save(source)
 
@@ -122,7 +120,7 @@ def test_compose_photo_renders_shadow_and_mat(tmp_path: Path) -> None:
     compose_photo(
         source=source,
         output=styled_out,
-        settings=_settings(shadow=True, mat_size=3),
+        settings=_settings(shadow=True),
         paths=_paths(),
     )
 

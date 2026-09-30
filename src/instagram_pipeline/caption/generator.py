@@ -62,7 +62,7 @@ class CaptionGenerator:
             ],
         )
         text = response.choices[0].message.content or ""
-        tags = " ".join(self.hashtags)
+        tags = " ".join(f"#{t}" for t in self.hashtags)
         return f"{text.strip()}\n\n{tags}"
 
     @staticmethod

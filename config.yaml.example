@@ -33,7 +33,6 @@ image:
   border_size: 40            # min px border added around the photo
   border_color: "#808080"    # neutral photographic gray
   shadow: true               # drop shadow under the photo
-  mat_size: 3                # px white mat line around the photo
 
 # --- Template rendering (HTML -> PNG) ---
 render:
@@ -43,10 +42,10 @@ render:
 
 # --- Caption ---
 caption:
-  # Pre-determined hashtags appended to every generated description.
+  # Pre-determined hashtags (the leading '#' is added programmatically).
   hashtags:
-    - "#photography"
-    - "#travel"
+    - photography
+    - travel
 
 # --- Upload behavior ---
 upload:

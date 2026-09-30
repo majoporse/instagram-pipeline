@@ -50,7 +50,6 @@ class ImageSettings(BaseModel):
     border_size: int = 40
     border_color: str = "#808080"
     shadow: bool = True
-    mat_size: int = 3
 
 
 class RenderSettings(BaseModel):

@@ -40,7 +40,7 @@ def _stub_generator(client: object, hashtags: list[str]) -> CaptionGenerator:
 
 def test_generate_caption_appends_hashtags(tmp_path: Path) -> None:
     fake = _FakeClient("Beautiful shot under the stars")
-    generator = _stub_generator(fake, ["#photography", "#stars"])
+    generator = _stub_generator(fake, ["photography", "stars"])
     image = tmp_path / "photo.png"
     image.write_bytes(b"fake-image-bytes")
 
@@ -51,7 +51,7 @@ def test_generate_caption_appends_hashtags(tmp_path: Path) -> None:
 
 def test_generate_caption_handles_empty_llm_response(tmp_path: Path) -> None:
     fake = _FakeClient("")
-    generator = _stub_generator(fake, ["#travel"])
+    generator = _stub_generator(fake, ["travel"])
     image = tmp_path / "photo.jpg"
     image.write_bytes(b"fake-image-bytes")
 
@@ -89,10 +89,10 @@ def test_from_settings_applies_base_url() -> None:
         base_url="https://openrouter.ai/api/v1",
         model="openai/gpt-4o-mini",
     )
-    generator = CaptionGenerator.from_settings(settings, CaptionSettings(hashtags=["#a"]))
+    generator = CaptionGenerator.from_settings(settings, CaptionSettings(hashtags=["a"]))
 
     assert str(generator.model) == "openai/gpt-4o-mini"
-    assert generator.hashtags == ("#a",)
+    assert generator.hashtags == ("a",)
     assert str(generator.client.base_url) == "https://openrouter.ai/api/v1/"
 
 

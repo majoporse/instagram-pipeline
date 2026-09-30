@@ -48,7 +48,6 @@ def compose_photo(
             "border_size": settings.border_size,
             "border_color": settings.border_color,
             "shadow": settings.shadow,
-            "mat_size": settings.mat_size,
             "photo_width": photo_size[0],
             "photo_height": photo_size[1],
             "image_src": _image_data_url(source),
