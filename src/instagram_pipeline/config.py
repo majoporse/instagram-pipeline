@@ -45,10 +45,12 @@ class PathSettings(BaseModel):
 
 
 class ImageSettings(BaseModel):
+    template: str = "composed.html"
     output_size: int = 1080
     border_size: int = 40
-    border_color: str = "#ffffff"
-    jpeg_quality: int = 95
+    border_color: str = "#808080"
+    shadow: bool = True
+    mat_size: int = 3
 
 
 class RenderSettings(BaseModel):

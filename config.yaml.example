@@ -28,10 +28,12 @@ paths:
 
 # --- Image composition ---
 image:
+  template: "composed.html"
   output_size: 1080          # instagram pipeline renders 1:1 (1080x1080)
-  border_size: 40            # px border added around the photo
-  border_color: "#ffffff"
-  jpeg_quality: 95
+  border_size: 40            # min px border added around the photo
+  border_color: "#808080"    # neutral photographic gray
+  shadow: true               # drop shadow under the photo
+  mat_size: 3                # px white mat line around the photo
 
 # --- Template rendering (HTML -> PNG) ---
 render:

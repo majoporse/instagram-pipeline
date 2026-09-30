@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body { width: {{ width }}px; height: {{ height }}px; overflow: hidden; }
+
+    .frame {
+      width: {{ width }}px;
+      height: {{ height }}px;
+      padding: {{ border_size }}px;
+      background: {{ border_color }};
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .frame img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+      filter:
+        {% if shadow %}
+        drop-shadow(0 12px 24px rgba(0, 0, 0, 0.35))
+        {% endif %};
+    }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <img src="{{ image_src }}" alt="" />
+  </div>
+</body>
+</html>

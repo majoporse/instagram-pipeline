@@ -85,7 +85,7 @@ if __name__ == "__main__":
     config = load_config()
     generator = CaptionGenerator.from_settings(config.openai, config.caption)
     caption = generate_caption(
-        image=Path("output/manual/bordered.jpg"),
+        image=Path("input/test/yoda.jpg"),
         generator=generator,
     )
     print("Generated caption:\n", caption)

@@ -6,7 +6,10 @@ Instructions for AI coding agents working in this repository.
 
 An Instagram posting pipeline. For each source photo it produces **two** exact 1:1 images:
 
-1. **Composed photo** — the source photo cropped to a square with an added border.
+1. **Composed photo** — the source photo placed **centered** on a solid background with a
+   **minimum border**. Rendered from an HTML template (`templates/composed.html`) so the
+   layout is CSS: `object-fit: contain` scales the photo to fill the border box without
+   cropping or stretching, preserving aspect ratio.
 2. **Metadata card** — a visually appealing image built from an **HTML template** (rendered to PNG), showing title/location/date/caption body.
 
 It then generates a caption with an **LLM (OpenAI API)** and uploads both images to Instagram using **instagrapi**. Hashtags are pre-determined and configured in YAML, not generated.
@@ -15,9 +18,9 @@ Pipeline stages, in order:
 
 ```
 source photo
-  -> Step 1  image_processing   compose 1:1 bordered image (Pillow)
+  -> Step 1  image_processing   compose 1:1 bordered image (HTML template -> PNG)
   -> Step 2  renderer           render HTML metadata card to PNG (Playwright)
-  -> Step 3  caption            generate caption text (OpenAI LLM)
+  -> Step 3  caption            generate caption text (OpenAI LLM, vision)
   -> Step 4  uploader           upload photo + metadata card (instagrapi)
 ```
 
@@ -56,8 +59,10 @@ Keep this structure. New pipeline features go inside the matching `src/instagram
 - **YAML config for secrets**: `config.yaml` holds OpenAI key, Instagram credentials,
   paths, tags, template name. It is gitignored. `load_config()` validates it into typed
   pydantic models and errors clearly if the file is missing.
-- **HTML rendering**: Playwright (headless Chromium) renders a Jinja2 template at an
-  exact viewport. The metadata card must be pixel-perfect 1:1 (1080x1080).
+- **HTML rendering**: Playwright (headless Chromium) renders Jinja2 templates at an
+  exact viewport. Both the composed photo and the metadata card are pixel-perfect 1:1
+  (1080x1080). Bordered composition uses `object-fit: contain` — scale to fit, never
+  crop or stretch.
 - **Instagram upload**: `instagrapi` (private API). Session is persisted to
   `output/sessions/session.json` and reloaded — never accept account logins on every run.
 - **LLM captions**: `openai` SDK, which supports any OpenAI-compatible endpoint
