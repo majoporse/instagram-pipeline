@@ -1,17 +1,26 @@
-"""Generate Instagram captions with the OpenAI API."""
+"""Generate Instagram captions from a photo image using an LLM vision model."""
 
 from __future__ import annotations
 
+import base64
 from dataclasses import dataclass
+from pathlib import Path
 
 from openai import OpenAI
 
 from ..config import CaptionSettings, OpenAISettings
 
+_MIME = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp"}
+_SYSTEM_PROMPT = (
+    "You write engaging Instagram captions for photography posts. "
+    "Look at the photo carefully and describe it in an appealing way. "
+    "Return only the caption text, no hashtags."
+)
+
 
 @dataclass(frozen=True)
 class CaptionGenerator:
-    """Produces an Instagram caption from photo metadata using an LLM."""
+    """Produces an Instagram caption from a photo image using an LLM vision model."""
 
     client: OpenAI
     model: str
@@ -29,20 +38,26 @@ class CaptionGenerator:
             hashtags=tuple(caption.hashtags),
         )
 
-    def generate(self, metadata: dict[str, object]) -> str:
+    def generate(self, image: Path) -> str:
         response = self.client.chat.completions.create(
             model=self.model,
             messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "You write engaging Instagram captions for photography posts. "
-                        "Return only the caption text, no hashtags."
-                    ),
-                },
+                {"role": "system", "content": _SYSTEM_PROMPT},
                 {
                     "role": "user",
-                    "content": f"Photo metadata: {metadata}",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": "Write an Instagram caption for this photo.",
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": self._image_data_url(image),
+                                "detail": "auto",
+                            },
+                        },
+                    ],
                 },
             ],
         )
@@ -50,12 +65,18 @@ class CaptionGenerator:
         tags = " ".join(self.hashtags)
         return f"{text.strip()}\n\n{tags}"
 
+    @staticmethod
+    def _image_data_url(image: Path) -> str:
+        mime = _MIME.get(image.suffix.lower(), "image/jpeg")
+        encoded = base64.b64encode(image.read_bytes()).decode("ascii")
+        return f"data:{mime};base64,{encoded}"
+
 
 def generate_caption(
-    metadata: dict[str, object],
+    image: Path,
     generator: CaptionGenerator,
 ) -> str:
-    return generator.generate(metadata)
+    return generator.generate(image)
 
 
 if __name__ == "__main__":
@@ -64,11 +85,7 @@ if __name__ == "__main__":
     config = load_config()
     generator = CaptionGenerator.from_settings(config.openai, config.caption)
     caption = generate_caption(
-        metadata={
-            "title": "Aurora Over the Valley",
-            "location": "Reykjavik, Iceland",
-            "date": "2026-09-30",
-        },
+        image=Path("output/manual/bordered.jpg"),
         generator=generator,
     )
     print("Generated caption:\n", caption)

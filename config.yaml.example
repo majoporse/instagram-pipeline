@@ -4,6 +4,7 @@
 
 # --- OpenAI-compatible provider (caption generation) ---
 # OpenRouter (or any OpenAI-compatible endpoint) is supported via base_url.
+# The model must support vision (image input), e.g. openai/gpt-4o-mini.
 # Default (unset) = official OpenAI API. Example OpenRouter values:
 #   api_key:  "sk-or-v1-..."
 #   base_url: "https://openrouter.ai/api/v1"

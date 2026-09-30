@@ -61,8 +61,10 @@ Keep this structure. New pipeline features go inside the matching `src/instagram
 - **Instagram upload**: `instagrapi` (private API). Session is persisted to
   `output/sessions/session.json` and reloaded — never accept account logins on every run.
 - **LLM captions**: `openai` SDK, which supports any OpenAI-compatible endpoint
-  (OpenRouter, local proxies) via `openai.base_url` in `config.yaml`. The LLM writes
-  only the caption body; the configured hashtags are appended programmatically.
+  (OpenRouter, local proxies) via `openai.base_url` in `config.yaml`. The caption is
+  generated from the **composed photo image** (base64 vision input), not from metadata —
+  the model must support image input. The LLM writes only the caption body; the
+  configured hashtags are appended programmatically.
 
 ## Commands (always via uv)
 
@@ -95,8 +97,8 @@ credentials in `config.yaml` and are intentionally not automated in tests.
 - Renderer tests call real Playwright (Chromium is installed for the project).
 - Manual verification checklist: the composed photo is exactly the configured size
   (default 1080x1080), the metadata card is exactly the viewport size, and non-blank
-  (renders the template), captions append configured hashtags, uploader passes the right
-  path/caption to `photo_upload`.
+  (renders the template), captions are generated from the composed photo image (vision)
+  and append configured hashtags, uploader passes the right path/caption to `photo_upload`.
 
 ## Guardrails
 
