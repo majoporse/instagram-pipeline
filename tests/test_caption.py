@@ -1,6 +1,7 @@
 from openai import OpenAI
 
 from instagram_pipeline.caption.generator import CaptionGenerator, generate_caption
+from instagram_pipeline.config import CaptionSettings, OpenAISettings
 
 
 class _FakeCompletions:
@@ -50,3 +51,23 @@ def test_generate_caption_handles_empty_llm_response() -> None:
     caption = generate_caption(metadata={}, generator=generator)
 
     assert caption == "\n\n#travel"
+
+
+def test_from_settings_applies_base_url() -> None:
+    settings = OpenAISettings(
+        api_key="sk-or-v1-test",
+        base_url="https://openrouter.ai/api/v1",
+        model="openai/gpt-4o-mini",
+    )
+    generator = CaptionGenerator.from_settings(settings, CaptionSettings(hashtags=["#a"]))
+
+    assert str(generator.model) == "openai/gpt-4o-mini"
+    assert generator.hashtags == ("#a",)
+    assert str(generator.client.base_url) == "https://openrouter.ai/api/v1/"
+
+
+def test_from_settings_defaults_to_official_api() -> None:
+    settings = OpenAISettings(api_key="sk-test", model="gpt-4o-mini")
+    generator = CaptionGenerator.from_settings(settings, CaptionSettings())
+
+    assert str(generator.client.base_url) == "https://api.openai.com/v1/"

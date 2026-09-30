@@ -19,8 +19,12 @@ class CaptionGenerator:
 
     @classmethod
     def from_settings(cls, settings: OpenAISettings, caption: CaptionSettings) -> CaptionGenerator:
+        if settings.base_url:
+            client = OpenAI(api_key=settings.api_key, base_url=settings.base_url)
+        else:
+            client = OpenAI(api_key=settings.api_key)
         return cls(
-            client=OpenAI(api_key=settings.api_key),
+            client=client,
             model=settings.model,
             hashtags=tuple(caption.hashtags),
         )

@@ -21,6 +21,7 @@ def _resolve(path: Path) -> Path:
 
 class OpenAISettings(BaseModel):
     api_key: str
+    base_url: str | None = None
     model: str = "gpt-4o-mini"
 
 

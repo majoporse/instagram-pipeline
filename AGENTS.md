@@ -60,8 +60,9 @@ Keep this structure. New pipeline features go inside the matching `src/instagram
   exact viewport. The metadata card must be pixel-perfect 1:1 (1080x1080).
 - **Instagram upload**: `instagrapi` (private API). Session is persisted to
   `output/sessions/session.json` and reloaded — never accept account logins on every run.
-- **LLM captions**: `openai` SDK. The LLM writes only the caption body; the configured
-  hashtags are appended programmatically.
+- **LLM captions**: `openai` SDK, which supports any OpenAI-compatible endpoint
+  (OpenRouter, local proxies) via `openai.base_url` in `config.yaml`. The LLM writes
+  only the caption body; the configured hashtags are appended programmatically.
 
 ## Commands (always via uv)
 

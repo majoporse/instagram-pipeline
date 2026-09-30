@@ -2,7 +2,12 @@
 # Copy this file to `config.yaml` and fill in real values.
 # `config.yaml` (and any `session.json`) are gitignored — never commit secrets.
 
-# --- OpenAI (caption generation) ---
+# --- OpenAI-compatible provider (caption generation) ---
+# OpenRouter (or any OpenAI-compatible endpoint) is supported via base_url.
+# Default (unset) = official OpenAI API. Example OpenRouter values:
+#   api_key:  "sk-or-v1-..."
+#   base_url: "https://openrouter.ai/api/v1"
+#   model:    "openai/gpt-4o-mini"
 openai:
   api_key: "sk-..."
   model: "gpt-4o-mini"
