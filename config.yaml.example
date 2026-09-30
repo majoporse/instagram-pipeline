@@ -1,0 +1,46 @@
+# Instagram Pipeline configuration.
+# Copy this file to `config.yaml` and fill in real values.
+# `config.yaml` (and any `session.json`) are gitignored — never commit secrets.
+
+# --- OpenAI (caption generation) ---
+openai:
+  api_key: "sk-..."
+  model: "gpt-4o-mini"
+
+# --- Instagram credentials (upload) ---
+instagram:
+  username: "your_username"
+  password: "your_password"
+  # Session persistence file: reuse to avoid repeated logins / challenge_required.
+  session_file: "output/sessions/session.json"
+
+# --- Pipeline inputs & outputs ---
+paths:
+  source_dir: "input/photos"
+  output_dir: "output/images"
+  templates_dir: "templates"
+
+# --- Image composition ---
+image:
+  output_size: 1080          # instagram pipeline renders 1:1 (1080x1080)
+  border_size: 40            # px border added around the photo
+  border_color: "#ffffff"
+  jpeg_quality: 95
+
+# --- Template rendering (HTML -> PNG) ---
+render:
+  template: "metadata.html"
+  viewport_width: 1080
+  viewport_height: 1080
+
+# --- Caption ---
+caption:
+  # Pre-determined hashtags appended to every generated description.
+  hashtags:
+    - "#photography"
+    - "#travel"
+
+# --- Upload behavior ---
+upload:
+  dry_run: true              # true = generate images but do not post
+  publish_immediately: true

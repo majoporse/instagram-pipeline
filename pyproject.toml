@@ -1,0 +1,52 @@
+[project]
+name = "instagram-pipeline"
+version = "0.1.0"
+description = "Instagram pipeline: bordered 1:1 photo + metadata card (HTML rendered), LLM caption, upload"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "instagrapi>=3.0.16",
+    "jinja2>=3.1.6",
+    "openai>=3.22.1",
+    "pillow>=12.3.0",
+    "playwright>=1.63.0",
+    "pydantic>=2.12.5",
+    "pyyaml>=6.0.3",
+]
+
+[dependency-groups]
+dev = [
+    "mypy>=2.3.1",
+    "pytest>=9.1.1",
+    "ruff>=0.16.9",
+    "types-pyyaml>=6.0.12.20260906",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/instagram_pipeline"]
+
+[tool.uv]
+default-groups = ["dev"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "ANN"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+mypy_path = "src"
+
+[[tool.mypy.overrides]]
+module = ["instagrapi", "instagrapi.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

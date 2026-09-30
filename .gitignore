@@ -1,0 +1,26 @@
+# --- Environment / caches ---
+__pycache__/
+*.py[cod]
+.venv/
+.Python
+.env
+.env.*
+uv.lock
+
+# --- Config & secrets ---
+config.yaml
+session.json
+*.session.json
+output/sessions/
+
+# --- Generated artifacts ---
+output/
+input/photos/*
+!input/photos/.gitkeep
+
+# --- Tooling ---
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/

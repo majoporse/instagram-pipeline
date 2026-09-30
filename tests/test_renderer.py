@@ -1,0 +1,44 @@
+from pathlib import Path
+
+from PIL import Image
+
+from instagram_pipeline.config import RenderSettings
+from instagram_pipeline.renderer.renderer import Renderer, render_template
+
+TEMPLATES_DIR = Path(__file__).parent.parent / "templates"
+
+
+def test_render_template_produces_png(tmp_path: Path) -> None:
+    renderer = Renderer(
+        template="metadata.html",
+        templates_dir=TEMPLATES_DIR,
+        width=1080,
+        height=1080,
+    )
+
+    out = tmp_path / "card.png"
+    result = render_template(
+        context={
+            "title": "Aurora Over the Valley",
+            "location": "Reykjavik, Iceland",
+            "date": "2026-09-30",
+            "body": "A radiant night sky painted over a quiet valley.",
+        },
+        renderer=renderer,
+        output=out,
+    )
+
+    assert result == out
+    assert out.exists()
+
+    with Image.open(out) as img:
+        assert img.format == "PNG"
+        assert img.size == (1080, 1080)
+
+
+def test_renderer_from_settings_uses_config() -> None:
+    settings = RenderSettings(template="metadata.html")
+    renderer = Renderer.from_settings(settings, TEMPLATES_DIR)
+    assert renderer.template == "metadata.html"
+    assert renderer.templates_dir == TEMPLATES_DIR
+    assert (renderer.width, renderer.height) == (1080, 1080)
