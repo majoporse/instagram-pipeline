@@ -46,7 +46,7 @@ if __name__ == "__main__":
     publisher = Publisher.from_settings(config.instagram)
     caption = "A sample post from the instagram-pipeline uploader."
     media = upload_image(
-        image=Path("output/manual/bordered.jpg"),
+        image=Path("output/manual/bordered.png"),
         caption=caption,
         publisher=publisher,
     )

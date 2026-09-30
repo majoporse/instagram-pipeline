@@ -12,9 +12,9 @@ from ..config import CaptionSettings, OpenAISettings
 
 _MIME = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp"}
 _SYSTEM_PROMPT = (
-    "You write engaging Instagram captions for photography posts. "
-    "Look at the photo carefully and describe it in an appealing way. "
-    "Return only the caption text, no hashtags."
+    "Look at the photo carefully. "
+    "Output exactly 5 emojis that capture the mood of the photo "
+    "and nothing else - no words, no captions, no hashtags, no punctuation."
 )
 
 
@@ -48,7 +48,7 @@ class CaptionGenerator:
                     "content": [
                         {
                             "type": "text",
-                            "text": "Write an Instagram caption for this photo.",
+                            "text": "Output 5 emojis for this photo.",
                         },
                         {
                             "type": "image_url",
@@ -85,7 +85,7 @@ if __name__ == "__main__":
     config = load_config()
     generator = CaptionGenerator.from_settings(config.openai, config.caption)
     caption = generate_caption(
-        image=Path("input/test/yoda.jpg"),
+        image=Path("input/test/tmel.jpg"),
         generator=generator,
     )
     print("Generated caption:\n", caption)

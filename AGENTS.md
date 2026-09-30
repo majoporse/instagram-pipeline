@@ -7,10 +7,13 @@ Instructions for AI coding agents working in this repository.
 An Instagram posting pipeline. For each source photo it produces **two** exact 1:1 images:
 
 1. **Composed photo** — the source photo placed **centered** on a solid background with a
-   **minimum border**. Rendered from an HTML template (`templates/composed.html`) so the
-   layout is CSS: `object-fit: contain` scales the photo to fill the border box without
-   cropping or stretching, preserving aspect ratio.
-2. **Metadata card** — a visually appealing image built from an **HTML template** (rendered to PNG), showing title/location/date/caption body.
+   **minimum border**. Rendered from an HTML template (`renderer/templates/composed.html`)
+   so the layout is CSS: `object-fit: contain` scales the photo to fill the border box
+   without cropping or stretching, preserving aspect ratio.
+2. **Metadata card** — an HTML template (`renderer/templates/metadata.html`) rendered to PNG
+   showing the photo's EXIF details (camera, ISO, shutter, aperture, location, date)
+   directly on a light-gray background with hairline underlines, plus a small OpenStreetMap
+   map when the photo carries GPS coordinates.
 
 It then generates a caption with an **LLM (OpenAI API)** and uploads both images to Instagram using **instagrapi**. Hashtags are pre-determined and configured in YAML, not generated.
 
@@ -18,7 +21,7 @@ Pipeline stages, in order:
 
 ```
 source photo
-  -> Step 1  image_processing   compose 1:1 bordered image (HTML template -> PNG)
+  -> Step 1  image_processing   extract EXIF + compose 1:1 bordered image (HTML -> PNG)
   -> Step 2  renderer           render HTML metadata card to PNG (Playwright)
   -> Step 3  caption            generate caption text (OpenAI LLM, vision)
   -> Step 4  uploader           upload photo + metadata card (instagrapi)
@@ -30,15 +33,16 @@ source photo
 src/instagram_pipeline/
   config.py               # strict config loading (pydantic + PyYAML)
   pipeline.py             # orchestrator wiring the steps together
-  image_processing/       # Step 1: bordered 1:1 composition
-    bordered_image.py
+  image_processing/       # Step 1: EXIF extraction + bordered 1:1 composition
+    photo_metadata.py     #   EXIF reader (GPS, camera, exposure)
+    bordered_image.py     #   compose 1:1 bordered image (HTML template -> PNG)
   renderer/               # Step 2: Jinja2/HTML -> PNG
     renderer.py
+    templates/            #   HTML/Jinja2 templates (composed.html, metadata.html)
   caption/                # Step 3: LLM caption generation
     generator.py
   uploader/               # Step 4: instagrapi upload with session persistence
     publisher.py
-templates/                # HTML/Jinja2 templates consumed by the renderer
 input/photos/             # source images (gitignored)
 output/                   # generated images + instagrapi session (gitignored)
 config.yaml               # SECRETS — copy from config.yaml.example, never commit
@@ -60,9 +64,16 @@ Keep this structure. New pipeline features go inside the matching `src/instagram
   paths, tags, template name. It is gitignored. `load_config()` validates it into typed
   pydantic models and errors clearly if the file is missing.
 - **HTML rendering**: Playwright (headless Chromium) renders Jinja2 templates at an
-  exact viewport. Both the composed photo and the metadata card are pixel-perfect 1:1
-  (1080x1080). Bordered composition uses `object-fit: contain` — scale to fit, never
-  crop or stretch.
+  exact viewport, screenshotted at viewport size (not `full_page`) so output is always
+  exactly 1080x1080. Bordered composition uses `object-fit: contain` — scale to fit,
+  never crop or stretch.
+- **EXIF / GPS**: `image_processing/photo_metadata.py` reads EXIF with the `exif` package
+  (`make`/`model`, `photographic_sensitivity`, `exposure_time`, `f_number`,
+  `datetime_original`, GPS) and returns a typed `PhotoMetadata`. `PhotoMetadata.context()`
+  produces the metadata-card context; GPS adds `lat`/`lng`.
+- **Map**: the metadata card embeds a Leaflet + OpenStreetMap map (loaded from CDN in
+  the template) only when `lat`/`lng` are present. This needs network at render time;
+  tests render without GPS so they stay offline.
 - **Instagram upload**: `instagrapi` (private API). Session is persisted to
   `output/sessions/session.json` and reloaded — never accept account logins on every run.
 - **LLM captions**: `openai` SDK, which supports any OpenAI-compatible endpoint
@@ -78,6 +89,7 @@ uv sync                                   # install everything (dev group includ
 uv add <package>                          # add a runtime dep
 uv add --dev <package>                    # add a dev dep (lint/typing/tests)
 uv run pytest                             # run the suite
+uv run python -m instagram_pipeline.image_processing.photo_metadata     # prints EXIF for a photo
 uv run python -m instagram_pipeline.image_processing.bordered_image   # manual test a step
 uv run python -m instagram_pipeline.renderer.renderer                 # renders metadata_card.png
 uv run python -m instagram_pipeline.caption.generator                 # needs real OPENAI key
@@ -99,11 +111,14 @@ credentials in `config.yaml` and are intentionally not automated in tests.
 
 - One `tests/test_<component>.py` per package. External services (OpenAI, Instagram)
   are **faked/stubbed**, never called; network-free and directory-scoped via `tmp_path`.
-- Renderer tests call real Playwright (Chromium is installed for the project).
+- `test_photo_metadata.py` writes EXIF/GPS fixtures with the `exif` package itself.
+- Renderer tests call real Playwright (Chromium is installed for the project) but pass no
+  `lat`/`lng`, so the map (and its network tiles) is skipped and tests stay offline.
 - Manual verification checklist: the composed photo is exactly the configured size
   (default 1080x1080), the metadata card is exactly the viewport size, and non-blank
-  (renders the template), captions are generated from the composed photo image (vision)
-  and append configured hashtags, uploader passes the right path/caption to `photo_upload`.
+  (renders the template, including the map when GPS is present), captions are generated
+  from the composed photo image (vision) and append configured hashtags, uploader passes
+  the right path/caption to `photo_upload`.
 
 ## Guardrails
 

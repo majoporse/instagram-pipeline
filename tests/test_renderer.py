@@ -2,10 +2,8 @@ from pathlib import Path
 
 from PIL import Image
 
-from instagram_pipeline.config import RenderSettings
+from instagram_pipeline.config import TEMPLATES_DIR, RenderSettings
 from instagram_pipeline.renderer.renderer import Renderer, render_template
-
-TEMPLATES_DIR = Path(__file__).parent.parent / "templates"
 
 
 def test_render_template_produces_png(tmp_path: Path) -> None:
@@ -19,10 +17,12 @@ def test_render_template_produces_png(tmp_path: Path) -> None:
     out = tmp_path / "card.png"
     result = render_template(
         context={
-            "title": "Aurora Over the Valley",
+            "camera": "NIKON D750",
+            "iso": "400",
+            "shutter": "1/200s",
+            "aperture": "f/2.8",
             "location": "Reykjavik, Iceland",
             "date": "2026-09-30",
-            "body": "A radiant night sky painted over a quiet valley.",
         },
         renderer=renderer,
         output=out,

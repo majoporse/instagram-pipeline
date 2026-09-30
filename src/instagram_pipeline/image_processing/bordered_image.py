@@ -74,7 +74,7 @@ if __name__ == "__main__":
     out_dir.mkdir(parents=True, exist_ok=True)
 
     result = compose_photo(
-        source=sample_dir / "yoda-cropped.jpg",
+        source=sample_dir / "tmel.jpg",
         output=out_dir / "bordered.png",
         settings=settings.image,
         paths=settings.paths,

@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body { width: 1080px; height: 1080px; }
+
+    body {
+      background: #e8e8e8;
+      color: #1c1c1c;
+      font-family: "Avenir Next", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .plate {
+      width: 860px;
+      font-feature-settings: "tnum";
+    }
+
+    .plate__header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .plate__camera {
+      font-size: 26px;
+      font-weight: 500;
+      letter-spacing: 0.5em;
+      text-transform: uppercase;
+      color: #8a8a8a;
+    }
+
+    .plate__rule {
+      width: 64px;
+      height: 2px;
+      background: #9a9a9a;
+      margin: 22px auto 0;
+    }
+
+    .plate__row {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      padding: 22px 4px;
+      border-bottom: 1px solid rgba(28, 28, 28, 0.28);
+    }
+
+    .plate__row:last-of-type { border-bottom: none; }
+
+    .plate__label {
+      font-size: 22px;
+      letter-spacing: 0.35em;
+      text-transform: uppercase;
+      color: #8a8a8a;
+    }
+
+    .plate__value {
+      font-size: 40px;
+      font-weight: 300;
+      letter-spacing: 0.02em;
+    }
+
+    .plate__map {
+      width: 860px;
+      height: 340px;
+      margin-top: 14px;
+      border-bottom: 1px solid rgba(28, 28, 28, 0.28);
+    }
+
+    .plate__map .leaflet-tile {
+      filter: grayscale(0.85) contrast(1.05) brightness(1.05);
+    }
+  </style>
+</head>
+<body>
+  <div class="plate">
+    {% if camera %}
+    <div class="plate__header">
+      <div class="plate__camera">{{ camera }}</div>
+      <div class="plate__rule"></div>
+    </div>
+    {% endif %}
+
+    <div class="plate__row">
+      <span class="plate__label">ISO</span>
+      <span class="plate__value">{{ iso or '' }}</span>
+    </div>
+    <div class="plate__row">
+      <span class="plate__label">Shutter</span>
+      <span class="plate__value">{{ shutter or '' }}</span>
+    </div>
+    <div class="plate__row">
+      <span class="plate__label">Aperture</span>
+      <span class="plate__value">{{ aperture or '' }}</span>
+    </div>
+    <div class="plate__row">
+      <span class="plate__label">Location</span>
+      <span class="plate__value">{{ location or '' }}</span>
+    </div>
+    <div class="plate__row">
+      <span class="plate__label">Date</span>
+      <span class="plate__value">{{ date or '' }}</span>
+    </div>
+
+    {% if lat is defined and lng is defined %}
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <div id="map" class="plate__map"></div>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+      var map = L.map('map').setView([{{ lat }}, {{ lng }}], 14);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© OpenStreetMap'
+      }).addTo(map);
+      L.marker([{{ lat }}, {{ lng }}]).addTo(map);
+    </script>
+    {% endif %}
+  </div>
+</body>
+</html>

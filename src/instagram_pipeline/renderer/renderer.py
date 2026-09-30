@@ -40,7 +40,7 @@ class Renderer:
                 viewport={"width": self.width, "height": self.height},
             )
             page.set_content(html, wait_until="networkidle")
-            page.screenshot(path=str(output), full_page=True)
+            page.screenshot(path=str(output))
             browser.close()
         return output
 
@@ -55,18 +55,15 @@ def render_template(
 
 if __name__ == "__main__":
     from ..config import load_config
+    from ..image_processing.photo_metadata import extract_metadata
 
     config = load_config()
     renderer = Renderer.from_settings(config.render, config.paths.templates_dir)
 
-    out = output_path = Path("output/manual/metadata_card.png")
+    out = Path("output/manual/metadata_card.png")
+    metadata = extract_metadata(Path("input/test/tmel.jpg"))
     result = render_template(
-        context={
-            "title": "Aurora Over the Valley",
-            "location": "Reykjavik, Iceland",
-            "date": "2026-09-30",
-            "body": "A radiant night sky painted over a quiet valley.",
-        },
+        context=metadata.context(),
         renderer=renderer,
         output=out,
     )

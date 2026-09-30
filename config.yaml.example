@@ -21,10 +21,10 @@ instagram:
   session_file: "output/sessions/session.json"
 
 # --- Pipeline inputs & outputs ---
+# Templates ship inside the renderer package; no need to configure them.
 paths:
   source_dir: "input/photos"
   output_dir: "output/images"
-  templates_dir: "templates"
 
 # --- Image composition ---
 image:

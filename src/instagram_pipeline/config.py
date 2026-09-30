@@ -12,7 +12,9 @@ import yaml
 from pydantic import BaseModel, Field, model_validator
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
+PACKAGE_DIR = Path(__file__).resolve().parent
 CONFIG_PATH = ROOT_DIR / "config.yaml"
+TEMPLATES_DIR = PACKAGE_DIR / "renderer" / "templates"
 
 
 def _resolve(path: Path) -> Path:
@@ -34,7 +36,7 @@ class InstagramSettings(BaseModel):
 class PathSettings(BaseModel):
     source_dir: Path = ROOT_DIR / "input" / "photos"
     output_dir: Path = ROOT_DIR / "output" / "images"
-    templates_dir: Path = ROOT_DIR / "templates"
+    templates_dir: Path = TEMPLATES_DIR
 
     @model_validator(mode="after")
     def resolve_relative_paths(self) -> PathSettings:

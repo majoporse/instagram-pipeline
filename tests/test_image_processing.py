@@ -2,13 +2,11 @@ from pathlib import Path
 
 from PIL import Image
 
-from instagram_pipeline.config import ImageSettings, PathSettings
+from instagram_pipeline.config import TEMPLATES_DIR, ImageSettings, PathSettings
 from instagram_pipeline.image_processing.bordered_image import (
     BorderedImage,
     compose_photo,
 )
-
-TEMPLATES_DIR = Path(__file__).parent.parent / "templates"
 
 
 def _settings(
