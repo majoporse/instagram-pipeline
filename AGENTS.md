@@ -71,9 +71,11 @@ Keep this structure. New pipeline features go inside the matching `src/instagram
   (`make`/`model`, `photographic_sensitivity`, `exposure_time`, `f_number`,
   `datetime_original`, GPS) and returns a typed `PhotoMetadata`. `PhotoMetadata.context()`
   produces the metadata-card context; GPS adds `lat`/`lng`.
-- **Map**: the metadata card embeds a Leaflet + OpenStreetMap map (loaded from CDN in
-  the template) only when `lat`/`lng` are present. This needs network at render time;
-  tests render without GPS so they stay offline.
+- **Map**: the metadata card embeds a Leaflet map driven by `render.map_tiles` in
+  `config.yaml` (default: keyless CARTO Positron, light — alternatives: Voyager, Dark
+  Matter, OpenStreetMap). It is shown only when `lat`/`lng` are present; zoom/attribution
+  controls are disabled for a clean render. This needs network at render time; tests
+  render without GPS so they stay offline.
 - **Instagram upload**: `instagrapi` (private API). Session is persisted to
   `output/sessions/session.json` and reloaded — never accept account logins on every run.
 - **LLM captions**: `openai` SDK, which supports any OpenAI-compatible endpoint

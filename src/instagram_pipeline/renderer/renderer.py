@@ -8,7 +8,7 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader
 from playwright.sync_api import sync_playwright
 
-from ..config import RenderSettings
+from ..config import DEFAULT_MAP_TILES, RenderSettings
 
 
 @dataclass(frozen=True)
@@ -19,6 +19,8 @@ class Renderer:
     templates_dir: Path
     width: int = 1080
     height: int = 1080
+    map_tiles: str = DEFAULT_MAP_TILES
+    map_attribution: str = ""
 
     @classmethod
     def from_settings(cls, settings: RenderSettings, templates_dir: Path) -> Renderer:
@@ -27,11 +29,18 @@ class Renderer:
             templates_dir=templates_dir,
             width=settings.viewport_width,
             height=settings.viewport_height,
+            map_tiles=settings.map_tiles,
+            map_attribution=settings.map_attribution,
         )
 
     def render(self, context: dict[str, object], output: Path) -> Path:
         env = Environment(loader=FileSystemLoader(self.templates_dir))
-        html = env.get_template(self.template).render(**context)
+        merged: dict[str, object] = {
+            "map_tiles": self.map_tiles,
+            "map_attribution": self.map_attribution,
+            **context,
+        }
+        html = env.get_template(self.template).render(**merged)
 
         output.parent.mkdir(parents=True, exist_ok=True)
         with sync_playwright() as p:

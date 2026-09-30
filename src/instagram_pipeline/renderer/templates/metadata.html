@@ -71,10 +71,6 @@
       margin-top: 14px;
       border-bottom: 1px solid rgba(28, 28, 28, 0.28);
     }
-
-    .plate__map .leaflet-tile {
-      filter: grayscale(0.85) contrast(1.05) brightness(1.05);
-    }
   </style>
 </head>
 <body>
@@ -112,11 +108,17 @@
     <div id="map" class="plate__map"></div>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-      var map = L.map('map').setView([{{ lat }}, {{ lng }}], 14);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '© OpenStreetMap'
-      }).addTo(map);
+      var map = L.map('map', {
+        zoomControl: false,
+        attributionControl: false,
+        dragging: false,
+        scrollWheelZoom: false,
+        doubleClickZoom: false,
+        boxZoom: false,
+        keyboard: false,
+        touchZoom: false
+      }).setView([{{ lat }}, {{ lng }}], 15);
+      L.tileLayer('{{ map_tiles }}', { maxZoom: 20 }).addTo(map);
       L.marker([{{ lat }}, {{ lng }}]).addTo(map);
     </script>
     {% endif %}

@@ -39,6 +39,13 @@ render:
   template: "metadata.html"
   viewport_width: 1080
   viewport_height: 1080
+  # Keyless map tile style. Alternatives (swap the URL):
+  #   Voyager:       https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png
+  #   Dark Matter:   https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png
+  #   OpenStreetMap: https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png
+  map_tiles: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+  # Attribution text baked into the image (leave empty to hide it).
+  map_attribution: ""
 
 # --- Caption ---
 caption:

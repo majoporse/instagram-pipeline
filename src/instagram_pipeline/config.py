@@ -16,6 +16,9 @@ PACKAGE_DIR = Path(__file__).resolve().parent
 CONFIG_PATH = ROOT_DIR / "config.yaml"
 TEMPLATES_DIR = PACKAGE_DIR / "renderer" / "templates"
 
+# Keyless map tile styles (see config.yaml.example for alternatives).
+DEFAULT_MAP_TILES = "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+
 
 def _resolve(path: Path) -> Path:
     return path.expanduser().resolve()
@@ -58,6 +61,8 @@ class RenderSettings(BaseModel):
     template: str = "metadata.html"
     viewport_width: int = 1080
     viewport_height: int = 1080
+    map_tiles: str = DEFAULT_MAP_TILES
+    map_attribution: str = ""
 
 
 class CaptionSettings(BaseModel):
