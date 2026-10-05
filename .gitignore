@@ -24,3 +24,5 @@ input/photos/*
 .pytest_cache/
 .coverage
 htmlcov/
+
+helm/instagram-pipeline/values.yaml

@@ -7,7 +7,8 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 
-from .routes import API_PREFIX, router
+from .routes import router
+from .service import API_PREFIX
 
 _DESCRIPTION = """
 Expose the Instagram posting pipeline over HTTP.
@@ -21,9 +22,17 @@ Upload one source photo and the service will:
 5. optionally publish both images to Instagram.
 
 Images are written to `output/api/<post_id>/` and can be downloaded by id.
+
+Authentication uses a single login configured under `auth:` in `config.yaml`.
+Call `POST /auth/login` to receive a signed JWT (also set as an HttpOnly cookie);
+all pipeline endpoints then require that cookie or an `Authorization: Bearer` token.
 """
 
 _TAGS_METADATA = [
+    {
+        "name": "auth",
+        "description": "Login/logout and current-user endpoints (JWT in a cookie).",
+    },
     {
         "name": "image-processing",
         "description": "Step 1: compose the exact 1:1 bordered image.",

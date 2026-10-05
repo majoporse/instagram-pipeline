@@ -13,12 +13,49 @@ openai:
   api_key: "sk-..."
   model: "gpt-4o-mini"
 
-# --- Instagram credentials (upload) ---
+# --- Instagram publishing (Meta official API: Instagram API with Instagram Login) ---
+# Requires an Instagram Professional (Business/Creator) account. Create a Meta
+# app with the Instagram product ("API setup with Instagram login"), add your
+# account as a tester, then exchange the short-lived token for a long-lived one:
+#   GET https://graph.instagram.com/access_token
+#       ?grant_type=ig_exchange_token&client_secret=<APP_SECRET>&access_token=<SHORT>
+# Scopes: instagram_business_basic, instagram_business_content_publish.
+# Your own account works in Development mode — no App Review required.
 instagram:
-  username: "your_username"
-  password: "your_password"
-  # Session persistence file: reuse to avoid repeated logins / challenge_required.
-  session_file: "output/sessions/session.json"
+  # Long-lived Instagram user access token (~60 days, refreshable).
+  access_token: "IGQVJ..."
+  # IG user id: GET https://graph.instagram.com/me?fields=user_id,username
+  ig_user_id: "17841400000000000"
+  graph_api_version: "v23.0"   # set to a currently supported Graph API version
+
+# --- S3 storage (required) ---
+# Meta fetches published media from public URLs, so the generated JPEGs are
+# uploaded here first. Works with MinIO / Cloudflare R2 / Backblaze B2 / AWS S3.
+# The URL Meta fetches is `{endpoint_url}/{bucket}/{key}` (path style), so
+# `endpoint_url` must be reachable by Meta, e.g. https://s3.pipeline.hatal.cc.
+# Every field below can be overridden from the environment (S3_ENDPOINT_URL,
+# S3_ACCESS_KEY, S3_SECRET_KEY, S3_BUCKET, S3_REGION, S3_PREFIX).
+s3:
+  endpoint_url: "https://s3.pipeline.hatal.cc"
+  region: "us-east-1"
+  access_key: "minio"
+  secret_key: "change-me"
+  bucket: "instagram-pipeline"
+  prefix: "posts"
+
+# --- API authentication (FastAPI) ---
+# Single hardcoded login protecting the HTTP API. Generate a strong secret with:
+#   uv run python -c "import secrets; print(secrets.token_urlsafe(48))"
+# Keep `secret_key` stable: changing it invalidates all existing sessions.
+auth:
+  username: "admin"
+  password: "change-me"
+  secret_key: "replace-with-a-long-random-string"
+  algorithm: "HS256"
+  token_expire_minutes: 43200   # 30 days -> keeps the login persistent
+  cookie_name: "access_token"
+  cookie_secure: false          # true when served over HTTPS
+  cookie_domain: null           # e.g. "example.com"; null = current host
 
 # --- Pipeline inputs & outputs ---
 # Templates ship inside the renderer package; no need to configure them.
@@ -58,3 +95,4 @@ caption:
 upload:
   dry_run: true              # true = generate images but do not post
   publish_immediately: true
+  carousel: true             # true = composed photo + metadata card; false = composed only

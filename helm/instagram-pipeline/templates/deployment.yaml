@@ -1,0 +1,74 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "instagram-pipeline.fullname" . }}
+  labels:
+    {{- include "instagram-pipeline.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  strategy:
+    # Single writer: the generated-output volume is ReadWriteOnce.
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "instagram-pipeline.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "instagram-pipeline.labels" . | nindent 8 }}
+      annotations:
+        checksum/config: {{ include "instagram-pipeline.config" . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+    spec:
+      {{- if and .Values.image.auth.username .Values.image.auth.password }}
+      imagePullSecrets:
+        - name: {{ include "instagram-pipeline.registrySecretName" . }}
+      {{- end }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.registry }}/{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          envFrom:
+            - secretRef:
+                name: {{ include "instagram-pipeline.secretName" . }}
+          livenessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: http
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: /app/config.yaml
+              subPath: config.yaml
+              readOnly: true
+            - name: output
+              mountPath: /app/output
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "instagram-pipeline.configMapName" . }}
+        - name: output
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "instagram-pipeline.fullname" . }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        - name: tmp
+          emptyDir: {}

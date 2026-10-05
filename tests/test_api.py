@@ -4,17 +4,26 @@ from typing import Any
 from fastapi.testclient import TestClient
 
 from instagram_pipeline.api.app import create_app
+from instagram_pipeline.api.auth import get_auth_settings, get_current_user
+from instagram_pipeline.api.dependencies import get_pipeline_service
 from instagram_pipeline.api.models import (
     GeneratedImage,
     ImageKind,
     PhotoMetadata,
     PostResponse,
     PublishResult,
+    User,
 )
-from instagram_pipeline.api.routes import get_pipeline_service
+from instagram_pipeline.config import AuthSettings
 from instagram_pipeline.image_processing.bordered_image import BorderedImage
 
 _POST_ID = "0" * 32
+_AUTH = AuthSettings(
+    username="admin",
+    password="test-password",
+    secret_key="test-secret-key-that-is-at-least-32-bytes",
+    cookie_secure=False,
+)
 
 
 class _FakeService:
@@ -74,9 +83,18 @@ class _FakeService:
         return self.image
 
 
-def _client(fake: _FakeService) -> TestClient:
+def _client(fake: _FakeService, *, authenticated: bool = True) -> TestClient:
     app = create_app()
     app.dependency_overrides[get_pipeline_service] = lambda: fake
+    app.dependency_overrides[get_auth_settings] = lambda: _AUTH
+    if authenticated:
+        app.dependency_overrides[get_current_user] = lambda: User(username="tester")
+    return TestClient(app)
+
+
+def _auth_client() -> TestClient:
+    app = create_app()
+    app.dependency_overrides[get_auth_settings] = lambda: _AUTH
     return TestClient(app)
 
 
@@ -204,3 +222,77 @@ def test_download_missing_image_returns_404() -> None:
     client = _client(_FakeService())
     response = client.get(f"/api/v1/posts/{_POST_ID}/images/composed")
     assert response.status_code == 404
+
+
+# --- authentication ---------------------------------------------------------
+
+
+def test_protected_endpoints_require_authentication() -> None:
+    client = _client(_FakeService(), authenticated=False)
+
+    unauth = client.post(
+        "/api/v1/image-processing",
+        files={"photo": ("source.jpg", b"jpeg-bytes", "image/jpeg")},
+    )
+    assert unauth.status_code == 401
+
+    me = client.get("/api/v1/auth/me")
+    assert me.status_code == 401
+
+
+def test_login_sets_persistent_cookie_and_me_works() -> None:
+    client = _auth_client()
+
+    response = client.post(
+        "/api/v1/auth/login",
+        data={"username": "admin", "password": "test-password"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["token_type"] == "bearer"
+    assert body["user"] == {"username": "admin"}
+    assert body["expires_in"] == _AUTH.token_expire_minutes * 60
+    assert "access_token" in client.cookies
+
+    me = client.get("/api/v1/auth/me")
+    assert me.status_code == 200
+    assert me.json() == {"username": "admin"}
+
+
+def test_login_rejects_bad_credentials() -> None:
+    client = _auth_client()
+    response = client.post(
+        "/api/v1/auth/login",
+        data={"username": "admin", "password": "wrong"},
+    )
+    assert response.status_code == 401
+
+
+def test_bearer_token_authenticates() -> None:
+    login_client = _auth_client()
+    token = login_client.post(
+        "/api/v1/auth/login",
+        data={"username": "admin", "password": "test-password"},
+    ).json()["access_token"]
+
+    token_client = _auth_client()
+    me = token_client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert me.status_code == 200
+    assert me.json() == {"username": "admin"}
+
+
+def test_logout_clears_cookie() -> None:
+    client = _auth_client()
+    login = client.post(
+        "/api/v1/auth/login",
+        data={"username": "admin", "password": "test-password"},
+    )
+    assert login.status_code == 200
+
+    logout = client.post("/api/v1/auth/logout")
+    assert logout.status_code == 200
+    assert logout.json() == {"status": "ok"}
+
+    me = client.get("/api/v1/auth/me")
+    assert me.status_code == 401

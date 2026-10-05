@@ -88,3 +88,24 @@ class HealthResponse(BaseModel):
     """Liveness payload returned by the health endpoint."""
 
     status: Literal["ok"] = Field(description="Fixed 'ok' when the service is up.")
+
+
+class User(BaseModel):
+    """Authenticated API user."""
+
+    username: str = Field(description="Username from the configured API login.")
+
+
+class TokenResponse(BaseModel):
+    """JWT issued by the login endpoint (also stored in an HttpOnly cookie)."""
+
+    access_token: str = Field(description="Signed JWT access token.")
+    token_type: Literal["bearer"] = Field(default="bearer", description="Token scheme.")
+    expires_in: int = Field(description="Token lifetime in seconds.")
+    user: User = Field(description="Authenticated user.")
+
+
+class LogoutResponse(BaseModel):
+    """Confirmation that the session cookie was cleared."""
+
+    status: Literal["ok"] = Field(default="ok", description="Fixed 'ok' on success.")

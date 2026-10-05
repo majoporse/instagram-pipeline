@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "instagram-pipeline.configMapName" . }}
+  labels:
+    {{- include "instagram-pipeline.labels" . | nindent 4 }}
+data:
+  config.yaml: |-
+    {{- include "instagram-pipeline.config" . | nindent 4 }}

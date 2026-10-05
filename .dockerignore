@@ -1,0 +1,33 @@
+# --- VCS / tooling ---
+.git
+.gitignore
+.dockerignore
+Dockerfile
+
+# --- Python environments & caches ---
+.venv/
+__pycache__/
+*.py[cod]
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# --- Secrets: never bake config.yaml into the image; mount it at runtime ---
+config.yaml
+.env
+.env.*
+*.session.json
+
+# --- Generated / local data ---
+output/
+input/photos/*
+input/test/*
+tests/
+
+# --- Deployment ---
+helm/
+docker-compose.yml
+compose.yaml
+.vscode/

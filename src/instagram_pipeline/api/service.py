@@ -20,7 +20,7 @@ from ..image_processing.bordered_image import BorderedImage, compose_photo
 from ..image_processing.photo_metadata import PhotoMetadata as ExtractedMetadata
 from ..image_processing.photo_metadata import extract_metadata
 from ..renderer.renderer import Renderer, render_template
-from ..uploader.publisher import Publisher, upload_image
+from ..uploader import OfficialPublisher, S3Uploader, to_jpeg
 from .models import (
     GeneratedImage,
     GpsCoordinates,
@@ -81,10 +81,10 @@ class PipelineService:
 
         metadata = extract_metadata(source)
         composed = self._compose(source, work_dir)
-        self._render(source, work_dir)
+        metadata_card = self._render(source, work_dir)
 
         caption = caption_override if caption_override is not None else self._caption(composed.path)
-        publish_result = self._publish(composed.path, caption, publish, post_id)
+        publish_result = self._publish(composed.path, metadata_card, caption, publish, post_id)
 
         return PostResponse(
             post_id=post_id,
@@ -154,6 +154,7 @@ class PipelineService:
     def _publish(
         self,
         composed: Path,
+        metadata_card: Path,
         caption: str,
         publish: bool | None,
         post_id: str,
@@ -162,18 +163,32 @@ class PipelineService:
         if not should_publish:
             return PublishResult(published=False)
         try:
-            media = upload_image(
-                image=composed,
-                caption=caption,
-                publisher=Publisher.from_settings(self.config.instagram),
-            )
+            return self._publish_official(composed, metadata_card, caption, post_id)
         except Exception as exc:
             logger.exception("Publishing post %s failed", post_id)
             return PublishResult(published=False, error=str(exc))
+
+    def _publish_official(
+        self,
+        composed: Path,
+        metadata_card: Path,
+        caption: str,
+        post_id: str,
+    ) -> PublishResult:
+        storage = S3Uploader.from_settings(self.config.s3)
+        sources = [composed, metadata_card] if self.config.upload.carousel else [composed]
+        urls = [
+            storage.upload(
+                storage.build_key(post_id, f"{post_id}-{index}.jpg"),
+                to_jpeg(source),
+            )
+            for index, source in enumerate(sources)
+        ]
+        published = OfficialPublisher.from_settings(self.config.instagram).publish(urls, caption)
         return PublishResult(
             published=True,
-            media_id=str(media.pk),
-            permalink=f"https://instagram.com/p/{media.code}/",
+            media_id=published.media_id,
+            permalink=published.permalink,
         )
 
     @staticmethod

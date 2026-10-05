@@ -41,7 +41,7 @@ def compose_photo(
     )
     with Image.open(source) as img:
         photo_size = img.size
-    renderer.render(
+    _ = renderer.render(
         context={
             "width": settings.output_size,
             "height": settings.output_size,

@@ -1,0 +1,84 @@
+# Post-tenant setup: allow anonymous GET only under `posts/*` and expire
+# objects after 7 days, so public image URLs don't linger.
+#
+# The official tenant chart only creates the bucket; the bucket policy and
+# lifecycle need `mc`. Apply this IN THE TENANT'S NAMESPACE:
+#
+#   kubectl apply -n instagram-pipeline-media -f helm/minio-tenant/provisioning-job.yaml
+#
+# Notes:
+# - The tenant's S3 Service is `<TENANT>` on port 80 (http; requestAutoCert is
+#   false). Set TENANT/TENANT_PORT below if you renamed the tenant.
+# - `minio/mc` was removed from Docker Hub when MinIO CE was archived, so this
+#   uses Bitnami's legacy minio-client image (ships the same `mc` binary).
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: minio-provision
+  labels:
+    app.kubernetes.io/name: minio
+    app.kubernetes.io/component: provisioning
+spec:
+  backoffLimit: 2
+  # Never hang forever: fail the Job after 5 minutes.
+  activeDeadlineSeconds: 300
+  ttlSecondsAfterFinished: 600
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: mc
+          image: bitnamilegacy/minio-client:latest
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -e
+              MC=/opt/bitnami/minio-client/bin/mc
+              set -a; . /creds/config.env; set +a
+              endpoint="http://${TENANT}:${TENANT_PORT}"
+              attempts=0
+              until "$MC" alias set local "$endpoint" "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" >/dev/null 2>&1; do
+                attempts=$((attempts + 1))
+                if [ "$attempts" -ge 60 ]; then
+                  echo "ERROR: cannot reach MinIO at $endpoint after $attempts attempts." >&2
+                  echo "Check the tenant's Service name/port: kubectl get svc -n \$NAMESPACE" >&2
+                  exit 1
+                fi
+                echo "waiting for MinIO at $endpoint ($attempts/60)..."
+                sleep 2
+              done
+              "$MC" mb --ignore-existing local/instagram-pipeline
+              cat >/tmp/policy.json <<'JSON'
+              {
+                "Version": "2012-10-17",
+                "Statement": [
+                  {
+                    "Effect": "Allow",
+                    "Principal": {"AWS": ["*"]},
+                    "Action": ["s3:GetObject"],
+                    "Resource": ["arn:aws:s3:::instagram-pipeline/posts/*"]
+                  }
+                ]
+              }
+              JSON
+              "$MC" anonymous set-json /tmp/policy.json local/instagram-pipeline
+              "$MC" ilm rule add --expire-days 7 local/instagram-pipeline >/dev/null 2>&1 || true
+              echo "bucket instagram-pipeline ready"
+          env:
+            - name: HOME
+              value: /tmp
+            # Tenant name == S3 Service name (kubectl get svc).
+            - name: TENANT
+              value: "minio"
+            # 80 = http port when requestAutoCert is false (443 if TLS).
+            - name: TENANT_PORT
+              value: "80"
+          volumeMounts:
+            - name: creds
+              mountPath: /creds
+              readOnly: true
+      volumes:
+        - name: creds
+          secret:
+            secretName: minio-credentials

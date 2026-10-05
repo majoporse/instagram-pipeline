@@ -1,0 +1,17 @@
+apiVersion: v2
+name: instagram-pipeline
+description: |
+  Instagram posting pipeline API: composes an exact 1:1 bordered photo, renders
+  an EXIF metadata card (Playwright), generates an LLM caption, and uploads to
+  Instagram. Exposes the pipeline over HTTP.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+kubeVersion: ">=1.24.0-0"
+keywords:
+  - instagram
+  - photography
+  - pipeline
+  - fastapi
+sources:
+  - https://github.com/anomalyco/instagram-pipeline

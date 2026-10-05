@@ -13,7 +13,7 @@ from ..config import CaptionSettings, OpenAISettings
 _MIME = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp"}
 _SYSTEM_PROMPT = (
     "Look at the photo carefully. "
-    "Output exactly 5 emojis that capture the mood of the photo "
+    "Output exactly 2 emojis that capture the mood of the photo "
     "and nothing else - no words, no captions, no hashtags, no punctuation."
 )
 
@@ -48,7 +48,7 @@ class CaptionGenerator:
                     "content": [
                         {
                             "type": "text",
-                            "text": "Output 5 emojis for this photo.",
+                            "text": "Output 2 emojis for this photo.",
                         },
                         {
                             "type": "image_url",

@@ -5,14 +5,16 @@ description = "Instagram pipeline: bordered 1:1 photo + metadata card (HTML rend
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "boto3>=1.43.108",
     "exif>=1.6.1",
     "fastapi>=0.142.2",
-    "instagrapi>=3.0.16",
+    "httpx>=0.28.1",
     "jinja2>=3.1.6",
     "openai>=3.22.1",
     "pillow>=12.3.0",
     "playwright>=1.63.0",
     "pydantic>=2.12.5",
+    "pyjwt>=2.15.1",
     "python-multipart>=0.0.32",
     "pyyaml>=6.0.3",
     "uvicorn[standard]>=0.54.0",
@@ -20,7 +22,6 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "httpx>=0.28.1",
     "mypy>=2.3.1",
     "pytest>=9.1.1",
     "ruff>=0.16.9",
@@ -50,7 +51,7 @@ strict = true
 mypy_path = "src"
 
 [[tool.mypy.overrides]]
-module = ["instagrapi", "instagrapi.*", "exif", "exif.*"]
+module = ["exif", "exif.*", "boto3", "boto3.*", "botocore", "botocore.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

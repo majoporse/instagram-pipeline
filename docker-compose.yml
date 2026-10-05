@@ -1,0 +1,76 @@
+# Instagram pipeline: API + MinIO (S3-compatible image hosting).
+#
+#   docker compose up --build
+#   API:        http://localhost:8000/docs
+#   MinIO API:  http://localhost:9000   (S3 endpoint)
+#   MinIO UI:   http://localhost:9001   (console)
+#
+# The bucket is created and set to anonymous download by `minio-init`, because
+# the official Instagram API fetches images over plain public URLs.
+#
+# IMPORTANT: Meta's servers must be able to reach the app's `S3_ENDPOINT_URL`,
+# since the public image URL is `{S3_ENDPOINT_URL}/{bucket}/{key}`. The internal
+# `http://minio:9000` is only reachable inside compose, so for real publishing
+# expose MinIO (tunnel/domain) and point the app at that public URL, e.g.
+#   S3_ENDPOINT_URL=https://minio.example.com docker compose up
+
+name: instagram-pipeline
+
+services:
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    ports:
+      - "9000:9000" # S3 API
+      - "9001:9001" # web console
+    volumes:
+      - minio-data:/data
+    restart: unless-stopped
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      - minio
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      S3_BUCKET: ${S3_BUCKET:-instagram-pipeline}
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        until mc alias set local http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD" >/dev/null 2>&1; do
+          echo "waiting for minio..."; sleep 2;
+        done
+        mc mb --ignore-existing "local/$$S3_BUCKET"
+        mc anonymous set download "local/$$S3_BUCKET"
+        echo "MinIO bucket ready: $$S3_BUCKET"
+    restart: "no"
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      minio-init:
+        condition: service_completed_successfully
+    # environment:
+    # Must be Meta-reachable: public URL = {S3_ENDPOINT_URL}/{bucket}/{key}.
+    # Override with a tunnel/domain for real publishing.
+    # S3_ENDPOINT_URL: ${S3_ENDPOINT_URL:-http://minio:9000}
+    # S3_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+    # S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    # S3_BUCKET: ${S3_BUCKET:-instagram-pipeline}
+    ports:
+      - "${API_PORT:-8000}:8000"
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+      - api-output:/app/output
+    restart: unless-stopped
+
+volumes:
+  minio-data:
+  api-output:
