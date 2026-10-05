@@ -4,8 +4,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, UploadFile
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, Depends, File, Response, UploadFile
 
 from ...dependencies import IMAGE_PNG_RESPONSES, get_pipeline_service, read_upload
 from ...service import PipelineService
@@ -15,7 +14,7 @@ router = APIRouter()
 
 @router.post(
     "/image-processing",
-    response_class=FileResponse,
+    response_class=Response,
     tags=["image-processing"],
     summary="Compose the 1:1 bordered image",
     description=(
@@ -31,7 +30,7 @@ def compose_image(
         File(description="Source photo (JPEG, PNG or WebP) to compose."),
     ],
     service: Annotated[PipelineService, Depends(get_pipeline_service)],
-) -> FileResponse:
+) -> Response:
     content = read_upload(photo)
-    result = service.compose(filename=photo.filename or "upload.jpg", content=content)
-    return FileResponse(result.path, media_type="image/png", filename=result.path.name)
+    data = service.compose(filename=photo.filename or "upload.jpg", content=content)
+    return Response(content=data, media_type="image/png")

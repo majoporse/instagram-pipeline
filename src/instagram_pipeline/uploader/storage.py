@@ -48,6 +48,10 @@ class S3Uploader:
         parts = [part for part in (self.prefix, post_id, filename) if part]
         return "/".join(parts)
 
+    def url(self, key: str) -> str:
+        """Public URL for ``key`` (``{endpoint_url}/{bucket}/{key}``)."""
+        return f"{self.endpoint_url}/{self.bucket}/{key}"
+
     def upload(self, key: str, data: bytes, content_type: str = "image/jpeg") -> str:
         """Store ``data`` under ``key`` and return the URL Meta should fetch."""
         self.client.put_object(
@@ -56,4 +60,10 @@ class S3Uploader:
             Body=data,
             ContentType=content_type,
         )
-        return f"{self.endpoint_url}/{self.bucket}/{key}"
+        return self.url(key)
+
+    def download(self, key: str) -> bytes:
+        """Fetch the object stored under ``key`` and return its bytes."""
+        response = self.client.get_object(Bucket=self.bucket, Key=key)
+        body = response["Body"]
+        return bytes(body.read())

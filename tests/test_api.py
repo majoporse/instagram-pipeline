@@ -15,7 +15,6 @@ from instagram_pipeline.api.models import (
     User,
 )
 from instagram_pipeline.config import AuthSettings
-from instagram_pipeline.image_processing.bordered_image import BorderedImage
 
 _POST_ID = "0" * 32
 _AUTH = AuthSettings(
@@ -32,17 +31,17 @@ class _FakeService:
         self.calls: list[str] = []
         self.last: dict[str, Any] = {}
 
-    def compose(self, *, filename: str, content: bytes) -> BorderedImage:
+    def compose(self, *, filename: str, content: bytes) -> bytes:
         self.calls.append("compose")
         self.last = {"filename": filename, "content": content}
         assert self.image is not None
-        return BorderedImage(path=self.image, size=(1080, 1080))
+        return self.image.read_bytes()
 
-    def render(self, *, filename: str, content: bytes) -> Path:
+    def render(self, *, filename: str, content: bytes) -> bytes:
         self.calls.append("render")
         self.last = {"filename": filename, "content": content}
         assert self.image is not None
-        return self.image
+        return self.image.read_bytes()
 
     def caption(self, *, filename: str, content: bytes) -> str:
         self.calls.append("caption")
@@ -79,8 +78,10 @@ class _FakeService:
             publish=PublishResult(published=bool(publish)),
         )
 
-    def resolve_image(self, post_id: str, kind: ImageKind) -> Path | None:
-        return self.image
+    def load_image(self, post_id: str, kind: ImageKind) -> bytes | None:
+        if self.image is None:
+            return None
+        return self.image.read_bytes()
 
 
 def _client(fake: _FakeService, *, authenticated: bool = True) -> TestClient:

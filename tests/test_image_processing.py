@@ -2,7 +2,7 @@ from pathlib import Path
 
 from PIL import Image
 
-from instagram_pipeline.config import TEMPLATES_DIR, ImageSettings, PathSettings
+from instagram_pipeline.config import TEMPLATES_DIR, ImageSettings
 from instagram_pipeline.image_processing.bordered_image import (
     BorderedImage,
     compose_photo,
@@ -22,16 +22,29 @@ def _settings(
     )
 
 
-def _paths() -> PathSettings:
-    return PathSettings(templates_dir=TEMPLATES_DIR)
+def _compose(
+    tmp_path: Path,
+    *,
+    source_size: tuple[int, int] = (400, 300),
+    settings: ImageSettings | None = None,
+    output: Path | None = None,
+) -> tuple[BorderedImage, Path]:
+    source = tmp_path / "source.jpg"
+    Image.new("RGB", source_size, (200, 100, 50)).save(source)
+
+    out = output or tmp_path / "bordered.png"
+    result = compose_photo(
+        source=source.read_bytes(),
+        filename=source.name,
+        settings=settings or _settings(),
+        templates_dir=TEMPLATES_DIR,
+    )
+    out.write_bytes(result.data)
+    return result, out
 
 
 def test_compose_photo_creates_exact_square(tmp_path: Path) -> None:
-    source = tmp_path / "source.jpg"
-    Image.new("RGB", (400, 300), (200, 100, 50)).save(source)
-
-    out = tmp_path / "bordered.png"
-    result = compose_photo(source=source, output=out, settings=_settings(), paths=_paths())
+    result, out = _compose(tmp_path)
 
     assert isinstance(result, BorderedImage)
     assert result.size == (600, 600)
@@ -41,11 +54,7 @@ def test_compose_photo_creates_exact_square(tmp_path: Path) -> None:
 
 
 def test_compose_photo_preserves_aspect_ratio(tmp_path: Path) -> None:
-    source = tmp_path / "source.jpg"
-    Image.new("RGB", (400, 300), (200, 100, 50)).save(source)
-
-    out = tmp_path / "bordered.png"
-    compose_photo(source=source, output=out, settings=_settings(), paths=_paths())
+    _result, out = _compose(tmp_path)
 
     with Image.open(out) as img:
         bg_px = img.getpixel((0, 0))
@@ -62,12 +71,8 @@ def test_compose_photo_preserves_aspect_ratio(tmp_path: Path) -> None:
 
 
 def test_compose_photo_is_centered(tmp_path: Path) -> None:
-    source = tmp_path / "source.jpg"
-    Image.new("RGB", (400, 300), (200, 100, 50)).save(source)
-
     settings = _settings()
-    out = tmp_path / "bordered.png"
-    compose_photo(source=source, output=out, settings=settings, paths=_paths())
+    _result, out = _compose(tmp_path, settings=settings)
 
     size = settings.output_size
     with Image.open(out) as img:
@@ -83,12 +88,8 @@ def test_compose_photo_is_centered(tmp_path: Path) -> None:
 
 
 def test_compose_photo_scales_to_fit_inner_box(tmp_path: Path) -> None:
-    source = tmp_path / "source.jpg"
-    Image.new("RGB", (100, 50), (200, 100, 50)).save(source)
-
     settings = _settings()
-    out = tmp_path / "bordered.png"
-    compose_photo(source=source, output=out, settings=settings, paths=_paths())
+    _result, out = _compose(tmp_path, source_size=(100, 50), settings=settings)
 
     with Image.open(out) as img:
         bg_px = img.getpixel((0, 0))
@@ -108,18 +109,12 @@ def test_compose_photo_scales_to_fit_inner_box(tmp_path: Path) -> None:
 
 
 def test_compose_photo_renders_shadow(tmp_path: Path) -> None:
-    source = tmp_path / "source.jpg"
-    Image.new("RGB", (100, 50), (200, 100, 50)).save(source)
-
-    plain_out = tmp_path / "plain.png"
-    compose_photo(source=source, output=plain_out, settings=_settings(), paths=_paths())
-
-    styled_out = tmp_path / "styled.png"
-    compose_photo(
-        source=source,
-        output=styled_out,
+    _plain_result, plain_out = _compose(tmp_path, source_size=(100, 50))
+    _styled_result, styled_out = _compose(
+        tmp_path,
+        source_size=(100, 50),
         settings=_settings(shadow=True),
-        paths=_paths(),
+        output=tmp_path / "styled.png",
     )
 
     with Image.open(plain_out) as plain, Image.open(styled_out) as styled:

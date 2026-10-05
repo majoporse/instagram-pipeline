@@ -38,7 +38,7 @@ class CaptionGenerator:
             hashtags=tuple(caption.hashtags),
         )
 
-    def generate(self, image: Path) -> str:
+    def generate(self, image: bytes, mime: str = "image/png") -> str:
         response = self.client.chat.completions.create(
             model=self.model,
             messages=[
@@ -53,7 +53,7 @@ class CaptionGenerator:
                         {
                             "type": "image_url",
                             "image_url": {
-                                "url": self._image_data_url(image),
+                                "url": self._image_data_url(image, mime),
                                 "detail": "auto",
                             },
                         },
@@ -66,17 +66,17 @@ class CaptionGenerator:
         return f"{text.strip()}\n\n{tags}"
 
     @staticmethod
-    def _image_data_url(image: Path) -> str:
-        mime = _MIME.get(image.suffix.lower(), "image/jpeg")
-        encoded = base64.b64encode(image.read_bytes()).decode("ascii")
+    def _image_data_url(image: bytes, mime: str) -> str:
+        encoded = base64.b64encode(image).decode("ascii")
         return f"data:{mime};base64,{encoded}"
 
 
 def generate_caption(
-    image: Path,
+    image: bytes,
     generator: CaptionGenerator,
+    mime: str = "image/png",
 ) -> str:
-    return generator.generate(image)
+    return generator.generate(image, mime)
 
 
 if __name__ == "__main__":
@@ -84,8 +84,10 @@ if __name__ == "__main__":
 
     config = load_config()
     generator = CaptionGenerator.from_settings(config.openai, config.caption)
+    sample = Path("input/test/tmel.jpg")
     caption = generate_caption(
-        image=Path("input/test/tmel.jpg"),
+        image=sample.read_bytes(),
         generator=generator,
+        mime=_MIME.get(sample.suffix.lower(), "image/jpeg"),
     )
     print("Generated caption:\n", caption)

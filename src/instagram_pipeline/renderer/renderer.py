@@ -33,7 +33,8 @@ class Renderer:
             map_attribution=settings.map_attribution,
         )
 
-    def render(self, context: dict[str, object], output: Path) -> Path:
+    def render_bytes(self, context: dict[str, object]) -> bytes:
+        """Render the template and return the PNG bytes in memory."""
         env = Environment(loader=FileSystemLoader(self.templates_dir))
         merged: dict[str, object] = {
             "map_tiles": self.map_tiles,
@@ -42,15 +43,19 @@ class Renderer:
         }
         html = env.get_template(self.template).render(**merged)
 
-        output.parent.mkdir(parents=True, exist_ok=True)
         with sync_playwright() as p:
             browser = p.chromium.launch()
             page = browser.new_page(
                 viewport={"width": self.width, "height": self.height},
             )
             page.set_content(html, wait_until="networkidle")
-            page.screenshot(path=str(output))
+            data = page.screenshot()
             browser.close()
+        return data
+
+    def render(self, context: dict[str, object], output: Path) -> Path:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_bytes(self.render_bytes(context))
         return output
 
 
@@ -70,7 +75,7 @@ if __name__ == "__main__":
     renderer = Renderer.from_settings(config.render, config.paths.templates_dir)
 
     out = Path("output/manual/metadata_card.png")
-    metadata = extract_metadata(Path("input/test/tmel.jpg"))
+    metadata = extract_metadata(Path("input/test/tmel.jpg").read_bytes())
     result = render_template(
         context=metadata.context(),
         renderer=renderer,

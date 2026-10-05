@@ -7,7 +7,6 @@ metadata:
 spec:
   replicas: 1
   strategy:
-    # Single writer: the generated-output volume is ReadWriteOnce.
     type: Recreate
   selector:
     matchLabels:
@@ -55,20 +54,11 @@ spec:
               mountPath: /app/config.yaml
               subPath: config.yaml
               readOnly: true
-            - name: output
-              mountPath: /app/output
             - name: tmp
               mountPath: /tmp
       volumes:
         - name: config
           configMap:
             name: {{ include "instagram-pipeline.configMapName" . }}
-        - name: output
-          {{- if .Values.persistence.enabled }}
-          persistentVolumeClaim:
-            claimName: {{ include "instagram-pipeline.fullname" . }}
-          {{- else }}
-          emptyDir: {}
-          {{- end }}
         - name: tmp
           emptyDir: {}

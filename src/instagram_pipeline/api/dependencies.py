@@ -6,7 +6,7 @@ from typing import Any
 
 from fastapi import HTTPException, UploadFile, status
 
-from ..config import ROOT_DIR, load_config
+from ..config import load_config
 from .models import ErrorResponse
 from .service import PipelineService
 
@@ -27,7 +27,7 @@ IMAGE_PNG_RESPONSES: dict[int | str, dict[str, Any]] = {
 
 def get_pipeline_service() -> PipelineService:
     """Provide the service, loading config lazily so imports stay side-effect free."""
-    return PipelineService(config=load_config(), output_root=ROOT_DIR / "output" / "api")
+    return PipelineService(config=load_config())
 
 
 def read_upload(photo: UploadFile) -> bytes:

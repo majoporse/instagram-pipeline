@@ -2,8 +2,12 @@
 
 Each pipeline stage (image processing, renderer, caption) is exposed as its
 own method, and `create_post` wires them together for the full pipeline.
-Everything returns paths or strictly typed models and knows nothing about
+Everything returns bytes or strictly typed models and knows nothing about
 FastAPI, so the same code can be reused from a CLI or worker.
+
+Nothing is written to the local disk: source photos arrive as bytes, the
+generated PNGs are rendered in memory and persisted to S3, and downloads are
+streamed back out of S3.
 """
 
 from __future__ import annotations
@@ -14,12 +18,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from uuid import uuid4
 
+from botocore.exceptions import ClientError
+
 from ..caption.generator import CaptionGenerator, generate_caption
 from ..config import Config
 from ..image_processing.bordered_image import BorderedImage, compose_photo
 from ..image_processing.photo_metadata import PhotoMetadata as ExtractedMetadata
 from ..image_processing.photo_metadata import extract_metadata
-from ..renderer.renderer import Renderer, render_template
+from ..renderer.renderer import Renderer
 from ..uploader import OfficialPublisher, S3Uploader, to_jpeg
 from .models import (
     GeneratedImage,
@@ -37,8 +43,17 @@ _IMAGE_FILENAMES: dict[ImageKind, str] = {
     ImageKind.COMPOSED: "composed.png",
     ImageKind.METADATA_CARD: "metadata-card.png",
 }
-_SUPPORTED_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp"}
+_MIME_BY_SUFFIX = {
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".webp": "image/webp",
+}
 _POST_ID_PATTERN = re.compile(r"[0-9a-f]{32}")
+
+
+def _mime_for(filename: str) -> str:
+    return _MIME_BY_SUFFIX.get(Path(filename).suffix.lower(), "image/jpeg")
 
 
 @dataclass(frozen=True)
@@ -46,24 +61,20 @@ class PipelineService:
     """Runs one pipeline stage, or all of them, for an uploaded photo."""
 
     config: Config
-    output_root: Path
 
     # --- individual stages -------------------------------------------------
 
-    def compose(self, *, filename: str, content: bytes) -> BorderedImage:
+    def compose(self, *, filename: str, content: bytes) -> bytes:
         """Step 1: compose the exact 1:1 bordered image from the source photo."""
-        work_dir, source = self._stage(filename, content)
-        return self._compose(source, work_dir)
+        return self._compose(content, filename)
 
-    def render(self, *, filename: str, content: bytes) -> Path:
+    def render(self, *, filename: str, content: bytes) -> bytes:
         """Step 2: render the 1:1 metadata card from the source photo's EXIF."""
-        work_dir, source = self._stage(filename, content)
-        return self._render(source, work_dir)
+        return self._render(content)
 
     def caption(self, *, filename: str, content: bytes) -> str:
         """Step 3: generate an LLM caption from the photo image."""
-        _work_dir, source = self._stage(filename, content)
-        return self._caption(source)
+        return self._caption(content, _mime_for(filename))
 
     # --- full pipeline -----------------------------------------------------
 
@@ -76,22 +87,27 @@ class PipelineService:
         publish: bool | None,
     ) -> PostResponse:
         post_id = uuid4().hex
-        work_dir = self._work_dir(post_id)
-        source = self._save_upload(work_dir, filename, content)
+        metadata = extract_metadata(content)
+        composed = self._compose(content, filename)
+        metadata_card = self._render(content)
 
-        metadata = extract_metadata(source)
-        composed = self._compose(source, work_dir)
-        metadata_card = self._render(source, work_dir)
+        storage = S3Uploader.from_settings(self.config.s3)
+        self._store_png(storage, post_id, ImageKind.COMPOSED, composed)
+        self._store_png(storage, post_id, ImageKind.METADATA_CARD, metadata_card)
 
-        caption = caption_override if caption_override is not None else self._caption(composed.path)
-        publish_result = self._publish(composed.path, metadata_card, caption, publish, post_id)
+        caption = caption_override
+        if caption is None:
+            caption = self._caption(composed, "image/png")
+        publish_result = self._publish(
+            composed, metadata_card, caption, publish, post_id, storage
+        )
 
         return PostResponse(
             post_id=post_id,
             caption=caption,
             metadata=_to_metadata(metadata),
             images=[
-                self._generated_image(post_id, ImageKind.COMPOSED, composed.size),
+                self._generated_image(post_id, ImageKind.COMPOSED, self._composed_size()),
                 self._generated_image(
                     post_id,
                     ImageKind.METADATA_CARD,
@@ -101,86 +117,80 @@ class PipelineService:
             publish=publish_result,
         )
 
-    def resolve_image(self, post_id: str, kind: ImageKind) -> Path | None:
-        """Return the on-disk path for a generated image, guarding traversal."""
+    def load_image(self, post_id: str, kind: ImageKind) -> bytes | None:
+        """Fetch a generated image from S3, guarding against traversal."""
         if _POST_ID_PATTERN.fullmatch(post_id) is None:
             return None
-        path = self.output_root / post_id / _IMAGE_FILENAMES[kind]
-        if not path.is_file():
+        storage = S3Uploader.from_settings(self.config.s3)
+        key = storage.build_key(post_id, _IMAGE_FILENAMES[kind])
+        try:
+            return storage.download(key)
+        except ClientError:
             return None
-        return path
 
     # --- internals ---------------------------------------------------------
 
-    def _stage(self, filename: str, content: bytes) -> tuple[Path, Path]:
-        work_dir = self._work_dir(uuid4().hex)
-        return work_dir, self._save_upload(work_dir, filename, content)
+    def _composed_size(self) -> tuple[int, int]:
+        return (self.config.image.output_size, self.config.image.output_size)
 
-    def _work_dir(self, name: str) -> Path:
-        work_dir = self.output_root / name
-        work_dir.mkdir(parents=True, exist_ok=True)
-        return work_dir
+    def _compose(self, content: bytes, filename: str) -> bytes:
+        result: BorderedImage = compose_photo(
+            source=content,
+            filename=filename,
+            settings=self.config.image,
+            templates_dir=self.config.paths.templates_dir,
+        )
+        return result.data
+
+    def _render(self, content: bytes) -> bytes:
+        metadata = extract_metadata(content)
+        renderer = Renderer.from_settings(self.config.render, self.config.paths.templates_dir)
+        return renderer.render_bytes(metadata.context())
+
+    def _caption(self, image: bytes, mime: str) -> str:
+        generator = CaptionGenerator.from_settings(self.config.openai, self.config.caption)
+        return generate_caption(image, generator, mime)
 
     @staticmethod
-    def _save_upload(work_dir: Path, filename: str, content: bytes) -> Path:
-        suffix = Path(filename).suffix.lower()
-        if suffix not in _SUPPORTED_SUFFIXES:
-            suffix = ".jpg"
-        source = work_dir / f"source{suffix}"
-        source.write_bytes(content)
-        return source
-
-    def _compose(self, source: Path, work_dir: Path) -> BorderedImage:
-        return compose_photo(
-            source=source,
-            output=work_dir / _IMAGE_FILENAMES[ImageKind.COMPOSED],
-            settings=self.config.image,
-            paths=self.config.paths,
+    def _store_png(storage: S3Uploader, post_id: str, kind: ImageKind, data: bytes) -> None:
+        storage.upload(
+            storage.build_key(post_id, _IMAGE_FILENAMES[kind]),
+            data,
+            content_type="image/png",
         )
-
-    def _render(self, source: Path, work_dir: Path) -> Path:
-        metadata = extract_metadata(source)
-        renderer = Renderer.from_settings(self.config.render, self.config.paths.templates_dir)
-        return render_template(
-            context=metadata.context(),
-            renderer=renderer,
-            output=work_dir / _IMAGE_FILENAMES[ImageKind.METADATA_CARD],
-        )
-
-    def _caption(self, image: Path) -> str:
-        generator = CaptionGenerator.from_settings(self.config.openai, self.config.caption)
-        return generate_caption(image, generator)
 
     def _publish(
         self,
-        composed: Path,
-        metadata_card: Path,
+        composed: bytes,
+        metadata_card: bytes,
         caption: str,
         publish: bool | None,
         post_id: str,
+        storage: S3Uploader,
     ) -> PublishResult:
         should_publish = publish if publish is not None else not self.config.upload.dry_run
         if not should_publish:
             return PublishResult(published=False)
         try:
-            return self._publish_official(composed, metadata_card, caption, post_id)
+            return self._publish_official(composed, metadata_card, caption, post_id, storage)
         except Exception as exc:
             logger.exception("Publishing post %s failed", post_id)
             return PublishResult(published=False, error=str(exc))
 
     def _publish_official(
         self,
-        composed: Path,
-        metadata_card: Path,
+        composed: bytes,
+        metadata_card: bytes,
         caption: str,
         post_id: str,
+        storage: S3Uploader,
     ) -> PublishResult:
-        storage = S3Uploader.from_settings(self.config.s3)
         sources = [composed, metadata_card] if self.config.upload.carousel else [composed]
         urls = [
             storage.upload(
                 storage.build_key(post_id, f"{post_id}-{index}.jpg"),
                 to_jpeg(source),
+                content_type="image/jpeg",
             )
             for index, source in enumerate(sources)
         ]

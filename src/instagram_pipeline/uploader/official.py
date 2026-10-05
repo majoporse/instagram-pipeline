@@ -58,9 +58,10 @@ def _raise_for_status(response: httpx.Response) -> None:
         ) from exc
 
 
-def to_jpeg(image: Path, quality: int = 92) -> bytes:
+def to_jpeg(image: bytes | Path, quality: int = 92) -> bytes:
     """Convert any Pillow-readable image to JPEG bytes (feed API requires JPEG)."""
-    with Image.open(image) as img:
+    source = io.BytesIO(image) if isinstance(image, (bytes, bytearray)) else image
+    with Image.open(source) as img:
         buffer = io.BytesIO()
         img.convert("RGB").save(buffer, format="JPEG", quality=quality)
     return buffer.getvalue()

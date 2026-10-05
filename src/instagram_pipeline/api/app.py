@@ -21,7 +21,7 @@ Upload one source photo and the service will:
 4. generate a caption (vision LLM) unless one is provided,
 5. optionally publish both images to Instagram.
 
-Images are written to `output/api/<post_id>/` and can be downloaded by id.
+Generated images are stored in S3 and can be downloaded by post id.
 
 Authentication uses a single login configured under `auth:` in `config.yaml`.
 Call `POST /auth/login` to receive a signed JWT (also set as an HttpOnly cookie);

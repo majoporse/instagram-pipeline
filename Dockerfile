@@ -33,7 +33,6 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* \
     && playwright install --with-deps --only-shell chromium \
     && useradd --create-home --uid 10001 app \
-    && mkdir -p /app/output \
     && chown -R app:app /app /ms-playwright
 
 WORKDIR /app

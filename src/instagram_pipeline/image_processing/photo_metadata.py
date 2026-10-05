@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from pathlib import Path
 
 import exif
 
@@ -42,9 +41,8 @@ class PhotoMetadata:
         return data
 
 
-def extract_metadata(photo: Path) -> PhotoMetadata:
-    with photo.open("rb") as fh:
-        image = exif.Image(fh)
+def extract_metadata(photo: bytes) -> PhotoMetadata:
+    image = exif.Image(photo)
     if not image.has_exif:
         return PhotoMetadata()
     return PhotoMetadata(
@@ -57,7 +55,7 @@ def extract_metadata(photo: Path) -> PhotoMetadata:
     )
 
 
-def extract_gps(photo: Path) -> GpsCoordinates | None:
+def extract_gps(photo: bytes) -> GpsCoordinates | None:
     return extract_metadata(photo).gps
 
 
@@ -120,11 +118,11 @@ def _date(image: exif.Image) -> str | None:
 
 if __name__ == "__main__":
     import sys
+    from pathlib import Path
 
     for raw in sys.argv[1:] or ["input/test/tmel.jpg"]:
-        photo = Path(raw)
-        metadata = extract_metadata(photo)
-        print(f"=== {photo}")
+        metadata = extract_metadata(Path(raw).read_bytes())
+        print(f"=== {raw}")
         print(f"  gps:      {metadata.gps}")
         print(f"  camera:   {metadata.camera}")
         print(f"  iso:      {metadata.iso}")

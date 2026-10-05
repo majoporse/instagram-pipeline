@@ -48,7 +48,7 @@ src/instagram_pipeline/
     generator.py
   uploader/               # Step 4: publish to Instagram
     official.py           #   official API (Instagram Login) container flow + JPEG
-    storage.py            #   S3-compatible upload (public image hosting)
+    storage.py            #   S3-compatible upload/download (public image hosting)
   api/                    # FastAPI service (self-contained HTTP layer)
     app.py                #   app factory + Swagger metadata
     auth.py               #   JWT/cookie core (token helpers, get_current_user)
@@ -61,8 +61,6 @@ src/instagram_pipeline/
       protected/          #     pipeline stages; auth applied once at router level
       system/             #     public /health
     __main__.py           #   `python -m instagram_pipeline.api` launches uvicorn
-input/photos/             # source images (gitignored)
-output/                   # generated images (gitignored)
 config.yaml               # SECRETS — copy from config.yaml.example, never commit
 config.yaml.example       # committed template documenting every setting
 tests/                    # pytest suite, one file per component
@@ -79,8 +77,14 @@ Keep this structure. New pipeline features go inside the matching `src/instagram
   config/data, dataclasses for stateless service objects, `from __future__ import
   annotations`. Do not loosen these settings without a strong reason.
 - **YAML config for secrets**: `config.yaml` holds the OpenAI key, Instagram access token,
-  S3 credentials, paths, tags, template name. It is gitignored. `load_config()` validates it
-  into typed pydantic models and errors clearly if the file is missing.
+  S3 credentials, tags, template name. It is gitignored. `load_config()` validates it
+  into typed pydantic models and errors clearly if the file is missing. There are no
+  source/output directory settings — only `paths.templates_dir` (the bundled HTML templates).
+- **No local file state**: the pipeline is fully in-memory. Source photos arrive as bytes;
+  EXIF (`exif.Image(bytes)`), composition, and the metadata card all operate on bytes, and
+  Playwright returns the screenshot bytes directly. Generated PNGs are persisted to S3
+  (`uploader/storage.py`) in `create_post`, and `GET /posts/{id}/images/{kind}` streams them
+  back from S3 (`S3Uploader.download`). Nothing is written to disk, so the chart needs no PVC.
 - **HTML rendering**: Playwright (headless Chromium) renders Jinja2 templates at an
   exact viewport, screenshotted at viewport size (not `full_page`) so output is always
   exactly 1080x1080. Bordered composition uses `object-fit: contain` — scale to fit,
@@ -95,14 +99,15 @@ Keep this structure. New pipeline features go inside the matching `src/instagram
   controls are disabled for a clean render. This needs network at render time; tests
   render without GPS so they stay offline.
 - **Instagram upload**: Meta's **Instagram API with Instagram Login**
-  (`graph.instagram.com`). Images are converted to JPEG, uploaded to S3-compatible storage
-  (`uploader/storage.py`), and published via the container flow (`uploader/official.py`)
-  since Meta fetches media from public URLs. Requires a Professional (Business/Creator)
-  account, a long-lived access token, and the `s3:` config section. Carousels use
-  `media_type=CAROUSEL`; a single image publishes directly.
-- **Docker**: `Dockerfile` builds the API image (uv + Playwright Chromium). `docker-compose.yml`
+  (`graph.instagram.com`). The generated PNGs are stored in S3 for downloads, then converted
+  to JPEG and re-uploaded to S3-compatible storage (`uploader/storage.py`) and published via
+  the container flow (`uploader/official.py`) since Meta fetches media from public URLs.
+  Requires a Professional (Business/Creator) account, a long-lived access token, and the
+  `s3:` config section. Carousels use `media_type=CAROUSEL`; a single image publishes directly.
+- **Docker / Helm**: `Dockerfile` builds the API image (uv + Playwright Chromium). `docker-compose.yml`
   runs the API plus MinIO (S3) and a `minio-init` job that creates the bucket and allows
-  anonymous download. In Kubernetes the non-secret `config.yaml` comes from a ConfigMap and
+  anonymous download. The Helm chart has no PVC: generated images live in S3, not on disk.
+  In Kubernetes the non-secret `config.yaml` comes from a ConfigMap and
   secret fields are injected as env vars (`load_config` overlays them): `OPENAI_API_KEY`,
   `INSTAGRAM_ACCESS_TOKEN`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `AUTH_PASSWORD`,
   `AUTH_SECRET_KEY`, plus the `S3_*` settings. The public image URL Meta fetches is
@@ -167,13 +172,16 @@ and S3 and has no standalone entry point.
 - Manual verification checklist: the composed photo is exactly the configured size
   (default 1080x1080), the metadata card is exactly the viewport size, and non-blank
   (renders the template, including the map when GPS is present), captions are generated
-  from the composed photo image (vision) and append configured hashtags, and the uploader
+  from the composed photo image (vision) and append configured hashtags, the generated PNGs
+  are stored in S3 and stream back from `GET /posts/{id}/images/{kind}`, and the uploader
   converts both PNGs to JPEG, uploads them to S3, and publishes a carousel (or single image).
 
 ## Guardrails
 
-- `config.yaml`, `output/`, and `input/photos/*` are gitignored. Never commit secrets.
+- `config.yaml` is gitignored. Never commit secrets.
 - Keep output exactly 1:1 at every image step — Instagram feeds render squares.
+- Do not reintroduce local output files: generated images belong in S3 (and only transiently
+  in `/tmp` for Playwright). The chart intentionally ships no PVC.
 - The official API does not accept byte uploads: images must be reachable at a public URL
   (the `s3:` section) for the duration of the publish. Be careful not to leave objects public
   longer than needed.

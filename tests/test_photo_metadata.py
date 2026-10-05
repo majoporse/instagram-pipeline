@@ -35,7 +35,7 @@ def _make_photo(tmp_path: Path, *, tagged: bool) -> Path:
 def test_extract_gps_from_exif(tmp_path: Path) -> None:
     path = _make_photo(tmp_path, tagged=True)
 
-    gps = extract_gps(path)
+    gps = extract_gps(path.read_bytes())
 
     assert gps is not None
     assert isinstance(gps, GpsCoordinates)
@@ -46,7 +46,7 @@ def test_extract_gps_from_exif(tmp_path: Path) -> None:
 def test_extract_metadata_context(tmp_path: Path) -> None:
     path = _make_photo(tmp_path, tagged=True)
 
-    context = extract_metadata(path).context()
+    context = extract_metadata(path.read_bytes()).context()
 
     assert context["camera"] == "NIKON CORPORATION NIKON D750"
     assert context["iso"] == "400"
@@ -60,7 +60,7 @@ def test_extract_metadata_context(tmp_path: Path) -> None:
 def test_extract_metadata_missing_exif(tmp_path: Path) -> None:
     path = _make_photo(tmp_path, tagged=False)
 
-    metadata = extract_metadata(path)
+    metadata = extract_metadata(path.read_bytes())
     context = metadata.context()
 
     assert metadata.gps is None

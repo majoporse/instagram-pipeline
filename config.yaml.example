@@ -57,12 +57,6 @@ auth:
   cookie_secure: false          # true when served over HTTPS
   cookie_domain: null           # e.g. "example.com"; null = current host
 
-# --- Pipeline inputs & outputs ---
-# Templates ship inside the renderer package; no need to configure them.
-paths:
-  source_dir: "input/photos"
-  output_dir: "output/images"
-
 # --- Image composition ---
 image:
   template: "composed.html"

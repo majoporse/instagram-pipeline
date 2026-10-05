@@ -68,9 +68,7 @@ services:
       - "${API_PORT:-8000}:8000"
     volumes:
       - ./config.yaml:/app/config.yaml:ro
-      - api-output:/app/output
     restart: unless-stopped
 
 volumes:
   minio-data:
-  api-output:

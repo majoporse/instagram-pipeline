@@ -2,8 +2,11 @@
 
 Deploys the pipeline API (FastAPI + Playwright). Minimal: a Deployment, a
 Service, a **ConfigMap** with the non-secret `config.yaml`, a **Secret** whose
-values are injected as env vars, and optionally an Ingress, a PVC, and a
-registry pull Secret.
+values are injected as env vars, and optionally an Ingress and a registry pull
+Secret.
+
+The app keeps no local state: generated images are stored in S3 (`config.s3`)
+and streamed back out of it, so there is no PVC to manage.
 
 The app reads the ConfigMap's `config.yaml` and overlays secret fields from the
 environment (`OPENAI_API_KEY`, `INSTAGRAM_ACCESS_TOKEN`, `S3_ACCESS_KEY`,
@@ -46,7 +49,6 @@ helm upgrade --install instagram-pipeline ./helm/instagram-pipeline \
 | `image.auth.username` / `password` / `secretName` | `""` / `""` / `registry-secret` | set user+pass to create the pull Secret |
 | `ingress.enabled` | `false` | exposes the API |
 | `ingress.host` / `className` / `clusterIssuer` / `tlsSecretName` | `pipeline.hatal.cc` / `traefik` / `letsencrypt-prod` / `instagram-pipeline-tls` | |
-| `persistence.enabled` / `storageClass` / `size` | `false` / `local-path` / `2Gi` | `false` = `emptyDir` |
 | `resources` | small requests/limits | |
 | `config.*` | placeholders | non-secret config → ConfigMap |
 | `secrets.*` | placeholders | Secret → env vars (see below) |
@@ -60,9 +62,9 @@ Secret → env mapping:
 | `s3AccessKey` / `s3SecretKey` | `S3_ACCESS_KEY` / `S3_SECRET_KEY` |
 | `authPassword` / `authSecretKey` | `AUTH_PASSWORD` / `AUTH_SECRET_KEY` |
 
-Only `image`, `ingress`, `persistence`, `resources`, `secrets`, and `config` are
-configurable; everything else (replicas, ports, security context, probes) is
-fixed in the templates.
+Only `image`, `ingress`, `resources`, `secrets`, and `config` are configurable;
+everything else (replicas, ports, security context, probes) is fixed in the
+templates.
 
 ## Operations
 
@@ -82,4 +84,4 @@ Login to the API with `config.auth.username` / `secrets.authPassword`, then
 | --- | --- |
 | `ImagePullBackOff` | set `image.auth.username`/`password` (or ensure a `registry-secret` exists in the namespace) and that the Harbor project/image exists |
 | `403`/config error at startup | the rendered `config.yaml` failed validation — check `secrets.*`/`config.*` (e.g. `auth.password` ≥ 8 chars, `auth.secretKey` ≥ 32) |
-| Images 404 after a restart | `persistence.enabled=false` uses an ephemeral `emptyDir`; enable persistence or serve from S3 |
+| Images 404 on download | the object may have expired (MinIO lifecycle) or `config.s3`/`secrets.s3*` is misconfigured; confirm the bucket is reachable and `s3.prefix` matches |

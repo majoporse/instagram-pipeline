@@ -5,17 +5,13 @@ Run with: uv run python -m instagram_pipeline.pipeline
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from instagram_pipeline.config import load_config
-
-DEFAULT_PHOTOS_DIR = Path("input/photos")
 
 
 def main() -> None:
     config = load_config()
-    print(f"Loaded config for @{config.instagram.username}")
-    print(f"Source photos: {config.paths.source_dir}")
+    print(f"Loaded config for IG user {config.instagram.ig_user_id}")
+    print(f"Images stored in S3 bucket: {config.s3.bucket}")
     print(f"Hashtags: {' '.join(config.caption.hashtags)}")
 
 

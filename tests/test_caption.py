@@ -44,7 +44,7 @@ def test_generate_caption_appends_hashtags(tmp_path: Path) -> None:
     image = tmp_path / "photo.png"
     image.write_bytes(b"fake-image-bytes")
 
-    caption = generate_caption(image=image, generator=generator)
+    caption = generate_caption(image=image.read_bytes(), generator=generator)
 
     assert caption == "Beautiful shot under the stars\n\n#photography #stars"
 
@@ -55,7 +55,9 @@ def test_generate_caption_handles_empty_llm_response(tmp_path: Path) -> None:
     image = tmp_path / "photo.jpg"
     image.write_bytes(b"fake-image-bytes")
 
-    caption = generate_caption(image=image, generator=generator)
+    caption = generate_caption(
+        image=image.read_bytes(), generator=generator, mime="image/jpeg"
+    )
 
     assert caption == "\n\n#travel"
 
@@ -69,7 +71,7 @@ def test_generate_caption_sends_image_data_url(tmp_path: Path) -> None:
     image_bytes = b"fake-image-bytes"
     image.write_bytes(image_bytes)
 
-    generate_caption(image=image, generator=generator)
+    generate_caption(image=image_bytes, generator=generator)
 
     messages = fake.chat.completions.seen_content
     assert messages is not None

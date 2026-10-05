@@ -4,8 +4,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Path, status
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, Depends, HTTPException, Path, Response, status
 
 from ...dependencies import get_pipeline_service
 from ...models import ErrorResponse, ImageKind
@@ -16,10 +15,13 @@ router = APIRouter()
 
 @router.get(
     "/posts/{post_id}/images/{kind}",
-    response_class=FileResponse,
+    response_class=Response,
     tags=["posts"],
     summary="Download a generated image",
-    description="Fetch one of the 1:1 PNG images produced for a previous upload.",
+    description=(
+        "Fetch one of the 1:1 PNG images produced for a previous upload. "
+        "The image is streamed from S3, where the pipeline stores its output."
+    ),
     responses={
         status.HTTP_200_OK: {
             "content": {"image/png": {}},
@@ -41,11 +43,16 @@ def get_generated_image(
         Path(description="Which generated image to download."),
     ],
     service: Annotated[PipelineService, Depends(get_pipeline_service)],
-) -> FileResponse:
-    image = service.resolve_image(post_id, kind)
-    if image is None:
+) -> Response:
+    data = service.load_image(post_id, kind)
+    if data is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Image not found for this post id.",
         )
-    return FileResponse(image, media_type="image/png", filename=image.name)
+    filename = f"{kind.value}.png"
+    return Response(
+        content=data,
+        media_type="image/png",
+        headers={"Content-Disposition": f'inline; filename="{filename}"'},
+    )

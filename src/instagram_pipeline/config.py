@@ -80,14 +80,16 @@ class AuthSettings(BaseModel):
 
 
 class PathSettings(BaseModel):
-    source_dir: Path = ROOT_DIR / "input" / "photos"
-    output_dir: Path = ROOT_DIR / "output" / "images"
+    """Filesystem paths the pipeline reads from.
+
+    Only the bundled HTML templates are read from disk; source photos and
+    generated images are handled in memory and stored in S3.
+    """
+
     templates_dir: Path = TEMPLATES_DIR
 
     @model_validator(mode="after")
     def resolve_relative_paths(self) -> PathSettings:
-        self.source_dir = _resolve(self.source_dir)
-        self.output_dir = _resolve(self.output_dir)
         self.templates_dir = _resolve(self.templates_dir)
         return self
 

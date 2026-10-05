@@ -4,8 +4,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, UploadFile
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, Depends, File, Response, UploadFile
 
 from ...dependencies import IMAGE_PNG_RESPONSES, get_pipeline_service, read_upload
 from ...service import PipelineService
@@ -15,7 +14,7 @@ router = APIRouter()
 
 @router.post(
     "/renderer",
-    response_class=FileResponse,
+    response_class=Response,
     tags=["renderer"],
     summary="Render the metadata card",
     description=(
@@ -31,7 +30,7 @@ def render_metadata_card(
         File(description="Source photo (JPEG, PNG or WebP) whose EXIF is rendered."),
     ],
     service: Annotated[PipelineService, Depends(get_pipeline_service)],
-) -> FileResponse:
+) -> Response:
     content = read_upload(photo)
-    card = service.render(filename=photo.filename or "upload.jpg", content=content)
-    return FileResponse(card, media_type="image/png", filename=card.name)
+    data = service.render(filename=photo.filename or "upload.jpg", content=content)
+    return Response(content=data, media_type="image/png")
