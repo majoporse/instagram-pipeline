@@ -83,23 +83,23 @@ secrets:
 ## Verify
 
 ```bash
-kubectl -n media get tenant,pods,svc,ingress
+kubectl -n instagram-pipeline-media get tenant,pods,svc,ingress
 curl -I https://s3.pipeline.hatal.cc/instagram-pipeline/posts/<post_id>/<post_id>-0.jpg
 ```
 
 **Console** (log in with the root credentials from the Secret):
 
 ```bash
-kubectl -n media get secret minio-credentials -o jsonpath='{.data.config\.env}' | base64 -d
+kubectl -n instagram-pipeline-media get secret minio-credentials -o jsonpath='{.data.config\.env}' | base64 -d
 # open https://minio-console.pipeline.hatal.cc
 ```
 
 If DNS/ingress isn't ready yet, port-forward instead:
 
 ```bash
-kubectl -n media port-forward svc/minio-console 9090:9090   # http-console
+kubectl -n instagram-pipeline-media port-forward svc/minio-console 9090:9090   # http-console
 # open http://localhost:9090
-```
+``
 
 ## Notes
 

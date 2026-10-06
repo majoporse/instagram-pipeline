@@ -26,3 +26,4 @@ input/photos/*
 htmlcov/
 
 helm/instagram-pipeline/values.yaml
+helm/minio-tenant/values-tenant.yaml

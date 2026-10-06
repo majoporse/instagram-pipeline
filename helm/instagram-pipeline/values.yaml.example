@@ -1,0 +1,94 @@
+# Minimal values for the instagram-pipeline chart.
+
+image:
+  registry: "registry.mycompany.com"
+  repository: "myimage"
+  tag: "" # defaults to .Chart.AppVersion
+  pullPolicy: IfNotPresent
+  # Set username + password and the chart creates the registry pull Secret
+  # (and wires it into the Deployment). Leave empty to skip.
+  auth:
+    username: ""
+    password: ""
+    secretName: "registry-secret"
+
+ingress:
+  enabled: true
+  className: traefik
+  host: my-domain.com
+  clusterIssuer: letsencrypt-prod
+  tlsSecretName: instagram-pipeline-tls
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi
+
+# Rendered into the `config.yaml` stored in the app's Secret.
+secrets:
+  openaiApiKey: ""
+  instagramAccessToken: ""
+  s3AccessKey: ""
+  s3SecretKey: ""
+  authPassword: ""
+  authSecretKey: ""
+
+# Non-secret settings, rendered into the `config.yaml` ConfigMap. Secrets
+# (openaiApiKey, instagramAccessToken, s3AccessKey/s3SecretKey, authPassword/
+# authSecretKey) live under `secrets:` above and are injected as env vars.
+config:
+  openai:
+    baseUrl: "" # empty = official OpenAI API
+    model: "openai/gpt-4o-mini"
+  instagram:
+    igUserId: "17841428303536831"
+    graphApiVersion: "v23.0"
+  s3:
+    # Must be reachable by Meta: public URL = {endpointUrl}/{bucket}/{key}.
+    endpointUrl: ""
+    region: "us-east-1"
+    bucket: "instagram-pipeline"
+    prefix: "posts"
+  auth:
+    username: "admin"
+    algorithm: "HS256"
+    tokenExpireMinutes: 43200 # 30 days
+    cookieName: "access_token"
+    cookieSecure: false
+    cookieDomain: null
+  image:
+    template: "composed.html"
+    outputSize: 1080
+    borderSize: 30
+    borderColor: "#808080"
+    shadow: true
+  render:
+    template: "metadata.html"
+    viewportWidth: 1080
+    viewportHeight: 1080
+    mapTiles: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+    mapAttribution: ""
+  caption:
+    hashtags:
+      - photography
+      - photographer
+      - photoeveryday
+      - visualdiary
+      - photodump
+      - capturethemoment
+      - myphotography
+      - dailyphoto
+      - dslrphotography
+      - amateurphotography
+      - hobbyphotographer
+      - photographylover
+      - nikonphotography
+      - shotonnikon
+      - photographyjourney
+  upload:
+    dryRun: true
+    publishImmediately: true
+    carousel: true

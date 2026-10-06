@@ -16,7 +16,7 @@ spec:
       labels:
         {{- include "instagram-pipeline.labels" . | nindent 8 }}
       annotations:
-        checksum/config: {{ include "instagram-pipeline.config" . | sha256sum }}
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
         checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
     spec:
       {{- if and .Values.image.auth.username .Values.image.auth.password }}

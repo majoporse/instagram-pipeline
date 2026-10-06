@@ -94,10 +94,12 @@
       <span class="plate__label">Aperture</span>
       <span class="plate__value">{{ aperture or '' }}</span>
     </div>
+    {% if location %}
     <div class="plate__row">
       <span class="plate__label">Location</span>
-      <span class="plate__value">{{ location or '' }}</span>
+      <span class="plate__value">{{ location }}</span>
     </div>
+    {% endif %}
     <div class="plate__row">
       <span class="plate__label">Date</span>
       <span class="plate__value">{{ date or '' }}</span>

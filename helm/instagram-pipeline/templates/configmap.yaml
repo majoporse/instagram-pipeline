@@ -1,9 +1,57 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "instagram-pipeline.configMapName" . }}
+  name: {{ include "instagram-pipeline.fullname" . }}
   labels:
     {{- include "instagram-pipeline.labels" . | nindent 4 }}
 data:
+  # Non-secret config.yaml, rendered from `config.*` (see values.yaml). Secrets
+  # are injected as env vars by the Deployment (see secret.yaml / config.py).
   config.yaml: |-
-    {{- include "instagram-pipeline.config" . | nindent 4 }}
+    openai:
+      model: {{ .Values.config.openai.model | quote }}
+    {{- if .Values.config.openai.baseUrl }}
+      base_url: {{ .Values.config.openai.baseUrl | quote }}
+    {{- end }}
+    instagram:
+      ig_user_id: {{ .Values.config.instagram.igUserId | quote }}
+    {{- if .Values.config.instagram.graphApiVersion }}
+      graph_api_version: {{ .Values.config.instagram.graphApiVersion | quote }}
+    {{- end }}
+    s3:
+      endpoint_url: {{ .Values.config.s3.endpointUrl | quote }}
+      bucket: {{ .Values.config.s3.bucket | quote }}
+    {{- if .Values.config.s3.region }}
+      region: {{ .Values.config.s3.region | quote }}
+    {{- end }}
+    {{- if .Values.config.s3.prefix }}
+      prefix: {{ .Values.config.s3.prefix | quote }}
+    {{- end }}
+    auth:
+      username: {{ .Values.config.auth.username | quote }}
+      algorithm: {{ .Values.config.auth.algorithm | quote }}
+      token_expire_minutes: {{ .Values.config.auth.tokenExpireMinutes }}
+      cookie_name: {{ .Values.config.auth.cookieName | quote }}
+      cookie_secure: {{ .Values.config.auth.cookieSecure }}
+    {{- if .Values.config.auth.cookieDomain }}
+      cookie_domain: {{ .Values.config.auth.cookieDomain | quote }}
+    {{- end }}
+    image:
+      template: {{ .Values.config.image.template | quote }}
+      output_size: {{ .Values.config.image.outputSize }}
+      border_size: {{ .Values.config.image.borderSize }}
+      border_color: {{ .Values.config.image.borderColor | quote }}
+      shadow: {{ .Values.config.image.shadow }}
+    render:
+      template: {{ .Values.config.render.template | quote }}
+      viewport_width: {{ .Values.config.render.viewportWidth }}
+      viewport_height: {{ .Values.config.render.viewportHeight }}
+      map_tiles: {{ .Values.config.render.mapTiles | quote }}
+      map_attribution: {{ .Values.config.render.mapAttribution | quote }}
+    caption:
+      hashtags:
+    {{- toYaml .Values.config.caption.hashtags | nindent 6 }}
+    upload:
+      dry_run: {{ .Values.config.upload.dryRun }}
+      publish_immediately: {{ .Values.config.upload.publishImmediately }}
+      carousel: {{ .Values.config.upload.carousel }}

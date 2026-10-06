@@ -50,8 +50,28 @@ helm upgrade --install instagram-pipeline ./helm/instagram-pipeline \
 | `ingress.enabled` | `false` | exposes the API |
 | `ingress.host` / `className` / `clusterIssuer` / `tlsSecretName` | `pipeline.hatal.cc` / `traefik` / `letsencrypt-prod` / `instagram-pipeline-tls` | |
 | `resources` | small requests/limits | |
-| `config.*` | placeholders | non-secret config → ConfigMap |
+| `config.*` | see below | non-secret config → ConfigMap |
 | `secrets.*` | placeholders | Secret → env vars (see below) |
+
+`config.*` mirrors the non-secret half of a local `config.yaml`; every setting the
+app understands is rendered into the ConfigMap, so the chart and a local run
+behave the same. Secrets stay under `secrets.*` (env vars) and `paths` is not
+needed (the HTML templates ship inside the image).
+
+| `config.*` | Maps to |
+| --- | --- |
+| `openai.baseUrl` / `model` | `openai.base_url` / `openai.model` (empty `baseUrl` = official OpenAI) |
+| `instagram.igUserId` / `graphApiVersion` | `instagram.ig_user_id` / `instagram.graph_api_version` |
+| `s3.endpointUrl` / `region` / `bucket` / `prefix` | `s3.*` |
+| `auth.username` / `algorithm` / `tokenExpireMinutes` / `cookieName` / `cookieSecure` / `cookieDomain` | `auth.*` |
+| `image.template` / `outputSize` / `borderSize` / `borderColor` / `shadow` | `image.*` |
+| `render.template` / `viewportWidth` / `viewportHeight` / `mapTiles` / `mapAttribution` | `render.*` |
+| `caption.hashtags` | `caption.hashtags` |
+| `upload.dryRun` / `publishImmediately` / `carousel` | `upload.*` |
+
+Any key you remove from `config.*` falls back to the pydantic default in
+`config.py`, so keep the ones that differ from it (e.g. `image.borderSize`,
+`render.mapTiles`).
 
 Secret → env mapping:
 

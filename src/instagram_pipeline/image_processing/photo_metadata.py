@@ -32,7 +32,7 @@ class PhotoMetadata:
             "iso": self.iso,
             "shutter": self.shutter,
             "aperture": self.aperture,
-            "location": location or self.date,
+            "location": location,
             "date": self.date,
         }
         if self.gps:
